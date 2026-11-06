@@ -32,12 +32,43 @@ PostgreSQL de destino
 
 O ambiente será executado localmente com Docker Compose. O `psql` servirá para consultar os dois bancos e um consumidor de console do Kafka exibirá os eventos durante a apresentação.
 
+### Pré-requisitos do PostgreSQL de origem
+
+Reservar um slide do eixo técnico para explicar estes quatro pontos e conferi-los no ambiente antes do ensaio:
+
+| Pré-requisito | O que mostrar e conferir |
+| --- | --- |
+| **WAL lógico** | Executar `SHOW wal_level;` e confirmar que o resultado é `logical`. |
+| **Permissões** | Usar um usuário de conexão com `LOGIN` e `REPLICATION`, acesso ao banco e permissão de leitura na tabela para o snapshot inicial. |
+| **Publicação** | Criar previamente uma publicação que inclua `public.produtos`. Conferir a tabela em `pg_publication_tables` e usar o mesmo nome na configuração do conector. |
+| **Slot de replicação** | Configurar um nome de slot para o conector. Depois de iniciá-lo, conferir em `pg_replication_slots` se o slot pertence ao banco de origem, usa `pgoutput` e está ativo durante a captura. |
+
+### Tabela no destino e validação do JDBC Sink
+
+O modo `schema.evolution=basic` permite ao JDBC Sink criar a tabela de destino com base no esquema dos eventos. **Para a demonstração, a proposta é criar previamente `public.produtos` no destino e usar `schema.evolution=none`**. Assim, o grupo pode mostrar a tabela vazia antes da primeira inserção. O script de inicialização deve criar colunas com tipos compatíveis e definir `id` como chave primária. O sink deve mapear o tópico para essa tabela.
+
+Antes da apresentação, fixar as versões das imagens usadas no Docker Compose, consultar a documentação da versão escolhida do Debezium e validar `insert.mode=upsert`, `delete.enabled=true`, `primary.key.mode=record_key` e o mapeamento de `id`. Os nomes e os comportamentos das propriedades podem variar entre versões. Confirmar que as tarefas dos conectores estão em execução e que cada operação produz o resultado esperado no destino.
+
+No teste de exclusão, inspecionar o evento `op=d` com a chave do produto e, se habilitado no conector de origem, o *tombstone* que vem depois, com a mesma chave e valor nulo. Conferir se os registros esperados chegam ao sink com a chave preservada e se a consulta pelo `id` retorna zero linhas no destino. O JDBC Sink pode processar um evento de exclusão ou um tombstone, conforme a configuração e a versão usadas.
+
 ## Fundamentação teórica
 
 - **Problema.** Manter uma cópia consultável do catálogo à medida que a origem muda, sem depender de uma nova cópia completa a cada alteração.
 - **Conceitos.** Explicar CDC baseado em log, o papel do WAL, a decodificação lógica e a diferença entre confirmar uma transação na origem, publicar seu evento e aplicar a mudança no destino. Diferenciar também a carga inicial por *snapshot* (eventos de leitura `op=r`) do fluxo contínuo de alterações.
 - **Vantagens.** A captura aproveita o log do banco e mantém o código que altera o catálogo separado do processo de sincronização. O tópico permite observar as mudanças e consumir os eventos em outro ritmo.
 - **Limitações.** O destino pode ficar temporariamente defasado. Eventos podem ser reprocessados, por isso o sink usa a chave primária e `upsert` para que a reaplicação de uma gravação produza o mesmo estado. Se o conector de origem parar de avançar, o slot pode reter WAL e aumentar o uso de disco.
+
+### Comparação com triggers e polling por timestamp
+
+O catálogo de destino precisa refletir inserções, atualizações e exclusões da origem. As três abordagens diferem na forma de detectar essas mudanças e no trabalho necessário para entregá-las ao destino.
+
+| Abordagem | Como funciona | O que exige ou limita |
+| --- | --- | --- |
+| **Triggers no PostgreSQL** | Uma trigger pode registrar cada `INSERT`, `UPDATE` e `DELETE` em uma tabela de eventos, na mesma transação que altera o catálogo. | Exige instalar e manter as triggers nas tabelas monitoradas. O registro do evento acrescenta trabalho à transação de origem, e outro processo precisa encaminhá-lo ao destino. |
+| **Polling por timestamp** | Um processo consulta periodicamente a tabela pelo campo `updated_at` para buscar linhas inseridas ou atualizadas desde a última leitura. | Exige manter o timestamp atualizado e executar consultas periódicas. Mudanças sucessivas na mesma linha entre consultas podem aparecer apenas como seu estado mais recente. Uma exclusão física faz a linha desaparecer da consulta, então é preciso registrar a remoção separadamente ou usar exclusão lógica. |
+| **Debezium com CDC baseado no WAL** | O conector lê as alterações confirmadas no log do PostgreSQL e publica eventos de inserção, atualização e exclusão. | Dispensa triggers de captura e consultas periódicas à tabela. Exige configurar a replicação lógica e monitorar o avanço do slot, pois atrasos na leitura podem aumentar a retenção de WAL. |
+
+Se o estoque passar de **10 para 7 e depois para 4**, em duas transações confirmadas entre consultas, o polling pode enxergar apenas **4**. Se o produto for excluído fisicamente no mesmo intervalo, a consulta por `updated_at` não retorna essa exclusão. O Debezium pode capturar as duas atualizações e a exclusão como eventos separados. Isso permite que o grupo demonstre tanto o estado final do catálogo quanto as operações que levaram a ele.
 
 ## Demonstração ao vivo
 
@@ -59,7 +90,7 @@ A avaliação divide o trabalho em **fundamentação teórica (50%)** e **demons
 | Eixo | Responsável proposto | Tempo | Conteúdo |
 | --- | --- | --- | --- |
 | Conceitual | Lucas | 8 min | Problema, conceitos, vantagens e limitações do CDC. |
-| Técnico | Renato | 4 min | Estudo de caso, diagrama do fluxo e configurações essenciais de captura e escrita. |
+| Técnico | Renato | 4 min | Estudo de caso, diagrama do fluxo, quatro pré-requisitos do PostgreSQL de origem e configuração da tabela e do sink no destino. |
 | Demonstração | Renato | 8 min | Primeiro as capturas de tela nos slides, depois a execução ao vivo e a verificação nos dois bancos. |
 
 Cada integrante apresenta pelo menos um eixo completo. Para a entrega, o grupo deve:
