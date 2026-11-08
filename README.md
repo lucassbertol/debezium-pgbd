@@ -126,7 +126,7 @@ Antes da apresentação, preparar os serviços, verificar os dois conectores e d
 | Passo | Ação na origem | Evento esperado | Verificação no destino |
 | --- | --- | --- | --- |
 | 1. Inserção | Cadastrar o produto `101` com estoque `10`. | `op=c`, com a chave `101`. | O produto aparece com estoque `10`. |
-| 2. Atualização | Alterar o estoque do produto `101` para `7`. | `op=u`, com o novo estoque. | O mesmo produto aparece com estoque `7`. |
+| 2. Atualização | Executar `UPDATE public.produtos SET estoque = 7 WHERE id = 101;` no `psql` da origem. | `op=u`, com o novo estoque. | O mesmo produto aparece com estoque `7`. |
 | 3. Exclusão | Excluir o produto `101`. | `op=d`, com a chave `101`. | A consulta pelo `id` retorna zero linhas. |
 | 4. Sincronização assíncrona | Pausar somente o sink, confirmar a pausa e cadastrar o produto `102`. | `op=c` aparece no tópico com o sink pausado. | O produto está na origem e ainda não aparece no destino. Depois de retomar o sink, ele aparece. |
 
@@ -136,7 +136,7 @@ Os resultados da tabela são os critérios de sucesso da demonstração. Durante
 
 A avaliação divide o trabalho em **fundamentação teórica (50%)** e **demonstração prática ao vivo (50%)**. O roteiro abaixo separa a apresentação nos três eixos exigidos e reserva aproximadamente 20 minutos dentro do limite indicado no enunciado.
 
-- [Slides finais em PPTX](apresentacao/CDC-com-Debezium-e-PostgreSQL-revisado.pptx)
+- [Slides finais em PPTX](apresentacao/CDC-com-Debezium-e-PostgreSQL-alinhado.pptx)
 - [Roteiro de demonstração, consultas SQL e recuperação](evidencias/etapa-5/roteiro.md)
 
 | Eixo | Responsável proposto | Tempo | Conteúdo |
@@ -148,7 +148,7 @@ A avaliação divide o trabalho em **fundamentação teórica (50%)** e **demons
 Cada integrante apresenta pelo menos um eixo completo. Para a entrega, o grupo deve:
 
 - A dupla respeita o limite de três integrantes. O grupo confirmou a exclusividade do Tema 10 na turma e o envio da composição e do tema ao professor (`mergen@inf.ufsm.br`).
-- Cronometrar o ensaio completo com a fala de Lucas e Renato e as transições para a demonstração. O roteiro reserva 20 minutos. No ensaio automatizado, a sequência técnica levou 10,4 segundos, incluindo interações, consultas e capturas.
+- Cronometrar o ensaio completo com a fala de Lucas e Renato e as transições para a demonstração. O roteiro reserva 20 minutos. No ensaio automatizado, a sequência técnica levou 12,5 segundos, incluindo interações, comandos SQL e capturas.
 - Incluir nos slides as capturas da solução funcionando, pois a avaliação considera o que foi realizado até a data de entrega.
 - Entregar pelo Moodle os mesmos slides que serão apresentados. Basta um envio por grupo, na data comum a confirmar. A data da apresentação de cada grupo será divulgada com antecedência.
 
