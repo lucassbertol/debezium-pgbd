@@ -1,0 +1,11 @@
+services:
+  connect:
+    ports: !override
+      - "127.0.0.1:18083:8083"
+
+  web:
+    ports: !override
+      - "127.0.0.1:18000:8000"
+    volumes:
+      - ./scripts/inicializar-demo.py:/demo/inicializar.py:ro
+      - ./connect:/demo/connect:ro

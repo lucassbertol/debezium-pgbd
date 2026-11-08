@@ -88,11 +88,36 @@ O teste usa chaves negativas para os produtos de verificação. Confere os dois 
 
 ### Operar pela interface web
 
-Execute `docker compose up -d --build --wait` e registre os conectores de origem e destino com os comandos das seções anteriores. Abra [CDC em operação](http://127.0.0.1:8000/). A interface é servida localmente pelo FastAPI e atualiza os painéis a cada segundo.
+Com o Docker em execução e o Docker Compose **2.24.4 ou posterior**, rode o inicializador na raiz do projeto.
+
+**Linux**
+
+```bash
+./iniciar-web.sh
+```
+
+**Windows (PowerShell, com Docker Desktop em modo de contêineres Linux)**
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\iniciar-web.ps1
+```
+
+Abra a [demonstração](http://127.0.0.1:18000/) quando o inicializador indicar que está pronta. Ele registra os dois conectores e confere que os bancos e o painel de eventos começam vazios. Cada execução apaga os volumes **do projeto descartável `debezium-pgbd-demo-vazia`**, incluindo produtos e eventos de demonstrações anteriores. O projeto normal usa a porta `8000` e seus dados ficam separados. Execute um inicializador por vez.
+
+Para abrir as duas sessões SQL da demonstração, use os comandos abaixo. A API do Kafka Connect dessa instância fica em `http://127.0.0.1:18083/`.
+
+```bash
+docker compose -p debezium-pgbd-demo-vazia -f compose.yaml -f compose.demo.yaml exec origem psql -U postgres -d catalogo
+docker compose -p debezium-pgbd-demo-vazia -f compose.yaml -f compose.demo.yaml exec destino psql -U postgres -d catalogo
+```
+
+Para parar a instância, execute `docker compose -p debezium-pgbd-demo-vazia -f compose.yaml -f compose.demo.yaml down`.
 
 1. Em **Origem**, informe ID, nome e estoque e use **Inserir produto**. Use **Editar** para alterar o estoque e **Excluir** para remover a linha da origem.
 2. Em **Eventos**, confira a chave e a operação e abra **Ver JSON** para inspecionar o registro completo. O painel usa o consumidor Kafka dedicado `catalogo-interface` e mantém em memória os 40 eventos mais recentes recebidos.
 3. Em **Destino**, compare a linha com a origem. Use **Pausar sink**, espere **Pausado** e insira outro produto. Confira o evento no Kafka e a ausência da linha no destino. Use **Retomar sink** e verifique que a linha aparece. O backend consulta esse banco em transações somente leitura.
+
+Para usar o ambiente normal, execute `docker compose up -d --build --wait` e registre os conectores com os comandos das seções anteriores. A [interface do ambiente normal](http://127.0.0.1:8000/) reutiliza seus volumes.
 
 O modo `schema.evolution=basic` permite ao JDBC Sink criar a tabela de destino com base no esquema dos eventos e adicionar colunas ausentes. **Na demonstração, o SQL de inicialização cria `public.produtos` e o sink usa `schema.evolution=none`**. A configuração mapeia `catalogo.public.produtos` para a tabela `produtos` no esquema JDBC `public` e usa o campo `id` da chave do evento para aplicar upserts e exclusões.
 
