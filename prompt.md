@@ -2,7 +2,11 @@
 
 Você vai ajudar **Lucas Bertol e Renato Marquioro** a implementar e apresentar o trabalho prático de **Projeto e Gerência de Banco de Dados — 2026/2**, do professor Sergio Mergen. O tema é **Captura de Mudanças de Dados em Tempo Real (CDC)**, Tema 10 do enunciado.
 
-Leia todas as páginas de [trabalho final.pdf](trabalho%20final.pdf) e o [README.md](README.md) antes de começar. Em caso de divergência, siga o PDF para os requisitos acadêmicos. Use o README como referência para as escolhas técnicas já discutidas. Trate a interface web, o teste de pausa e a divisão de tempo abaixo como escolhas do projeto.
+Leia todas as páginas de [trabalho final.pdf](trabalho%20final.pdf) e o [README.md](README.md) antes de começar. O PDF define os requisitos acadêmicos. O README registra as escolhas técnicas já discutidas.
+
+O objetivo acadêmico é explorar uma tecnologia voltada a bancos de dados. No Tema 10, mostre como o Debezium lê o log do PostgreSQL para sincronizar dados de forma assíncrona, sem triggers de captura. Como o Debezium é uma ferramenta integrada ao banco, a demonstração ao vivo deve comprovar, em um cenário de uso realista, a comunicação e a manipulação de dados em conexão direta com o PostgreSQL.
+
+O catálogo de produtos, a arquitetura com dois PostgreSQL e Kafka, a interface web, o teste de pausa, o formato PPTX, as notas de fala e a distribuição de tempo e de responsáveis são escolhas do projeto. A execução em etapas com autorização é uma regra deste roteiro.
 
 ## Regra obrigatória de execução
 
@@ -16,10 +20,10 @@ Leia todas as páginas de [trabalho final.pdf](trabalho%20final.pdf) e o [README
 
 - Identifique as exigências do PDF por página e mapeie cada uma para uma etapa e uma evidência. Separe exigências do enunciado de decisões do grupo.
 - Confirme o escopo de uma loja com uma tabela `public.produtos`, contendo `id` como chave primária, `nome` e `estoque`. A origem recebe as operações de escrita e o destino mantém uma cópia consultável.
-- Defina a arquitetura local. Use Docker Compose com dois PostgreSQL, Kafka, Kafka Connect com o conector PostgreSQL do Debezium e o Debezium JDBC Sink. Use FastAPI com HTML, CSS e JavaScript para a tela de demonstração.
+- Defina a arquitetura local. Use Docker Compose com dois PostgreSQL, Kafka, Kafka Connect com o conector PostgreSQL do Debezium e o Debezium JDBC Sink. Use FastAPI com HTML, CSS e JavaScript para a tela de demonstração. Priorize a validação do fluxo completo por SQL e Kafka, que também serve de roteiro ao vivo caso a interface falhe.
 - Verifique as dependências disponíveis e proponha versões compatíveis com base na documentação oficial correspondente. Registre as versões exatas na configuração quando implementar.
 - Registre que a dupla respeita o máximo de três integrantes. A exclusividade do tema na turma depende de confirmação. Um representante deve comunicar por e-mail ao professor (`mergen@inf.ufsm.br`) a formação e o tema escolhido. Se o grupo trocar para um tema fora dos sugeridos, registre a exigência de avaliação e concordância do professor.
-- Registre que o professor reservou duas datas para apresentações, que a data de cada grupo será divulgada com antecedência e que a data comum de entrega ainda será confirmada no enunciado. Confira com o grupo se já houve divulgação.
+- Registre que o professor reservou duas datas para apresentações, que a data de cada grupo será divulgada com antecedência e que o PDF deixa a data comum de entrega a confirmar. Confira com o grupo se as datas já foram divulgadas.
 
 **Critério de saída:** requisitos mapeados, escopo e arquitetura apresentados, pendências administrativas identificadas e nenhum serviço implementado nesta etapa.
 
@@ -69,7 +73,7 @@ Produza um deck editável em **PPTX** com os slides que o grupo vai apresentar. 
 
 - Abra com título, disciplina, tema e nomes completos do grupo. Inclua slides para a teoria, comparação, arquitetura, configuração e evidências. Reserve uma tela legível para o teste assíncrono antes e depois da retomada.
 - A fundamentação teórica vale **50%** e a demonstração prática ao vivo vale **50%**. Esses percentuais são pesos de avaliação. O tempo sugerido soma **20 minutos**, respeitando o limite aproximado de **20–25 minutos** indicado no PDF.
-- Preserve a exigência de que cada aluno apresente pelo menos um eixo inteiro. Use o ensaio para revisar clareza, domínio teórico e organização. Ajuste o aprofundamento à complexidade do tema e ao tempo disponível, mantendo o fluxo de CDC compreensível.
+- Preserve a exigência de que cada aluno apresente pelo menos um eixo inteiro. Use o ensaio para revisar clareza da apresentação, domínio teórico e organização da demonstração. O enunciado admite uma prática mais enxuta para temas complexos, com foco no fluxo principal, e exige maior completude e profundidade para temas mais simples. Para CDC, ajuste o aprofundamento ao tempo disponível e explique o fluxo completo da alteração no PostgreSQL de origem até sua aplicação no destino.
 - Renderize e revise todos os slides. Confira legibilidade em projeção, cortes, contraste, fidelidade das imagens e correspondência entre notas, comandos e o ambiente real. Mostre o deck ao grupo antes de iniciar a revisão final.
 
 **Critério de saída:** PPTX revisado visualmente, capturas reais incluídas, notas preparadas e distribuição de conteúdo e tempo conferida.
@@ -77,7 +81,7 @@ Produza um deck editável em **PPTX** com os slides que o grupo vai apresentar. 
 ## Etapa 7 — Revisar o trabalho e preparar a entrega
 
 - Cruze novamente o resultado com todas as páginas do PDF. Revise os três eixos, a apresentação integral de pelo menos um eixo por integrante, as capturas antes da execução ao vivo e a comprovação de manipulação direta de dados em PostgreSQL.
-- Confirme a duração em um ensaio completo e revise a correspondência entre o deck final e a demonstração. A avaliação considera o que foi realizado até a data de entrega, então inclua nos slides as evidências do que já está implementado.
+- Confirme a duração em um ensaio completo e revise a correspondência entre o deck final e a demonstração. A avaliação considera apenas o que foi realizado até a data de entrega. Inclua nos slides entregues capturas da solução em funcionamento, inclusive das telas que também serão exibidas ao vivo.
 - Entregue ao grupo o PPTX final, o link para o README e o roteiro de demonstração. A entrega exigida é a dos **mesmos slides que serão apresentados**, via **Moodle**, por **um integrante** na data comum definida pelo professor. Registre a data como pendente enquanto ela não estiver confirmada. Deixe o envio e a comunicação com o professor a cargo do grupo.
 
 **Critério de saída:** arquivos finais identificados, requisitos e evidências conferidos e pendências de entrega explicitadas ao grupo.

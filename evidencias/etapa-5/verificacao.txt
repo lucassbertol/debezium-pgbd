@@ -1,0 +1,219 @@
+Projeto isolado: debezium-pgbd-ensaio-1794166808
+time="2026-11-08T16:40:09-03:00" level=warning msg="Docker Compose is configured to build using Bake, but buildx isn't installed"
+#0 building with "default" instance using docker driver
+
+#1 [web internal] load build definition from Dockerfile
+#1 transferring dockerfile: 281B done
+#1 DONE 0.0s
+
+#2 [web internal] load metadata for docker.io/library/python:3.12.12-slim-bookworm
+#2 DONE 0.7s
+
+#3 [web internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [web internal] load build context
+#4 transferring context: 197B done
+#4 DONE 0.0s
+
+#5 [web 1/6] FROM docker.io/library/python:3.12.12-slim-bookworm@sha256:593bd06efe90efa80dc4eee3948be7c0fde4134606dd40d8dd8dbcade98e669c
+#5 resolve docker.io/library/python:3.12.12-slim-bookworm@sha256:593bd06efe90efa80dc4eee3948be7c0fde4134606dd40d8dd8dbcade98e669c 0.0s done
+#5 DONE 0.0s
+
+#6 [web 3/6] COPY requirements.txt .
+#6 CACHED
+
+#7 [web 5/6] COPY main.py .
+#7 CACHED
+
+#8 [web 4/6] RUN pip install --no-cache-dir -r requirements.txt
+#8 CACHED
+
+#9 [web 2/6] WORKDIR /app
+#9 CACHED
+
+#10 [web 6/6] COPY static ./static
+#10 CACHED
+
+#11 [web] exporting to image
+#11 exporting layers done
+#11 exporting manifest sha256:3ddc06d0b1e5c4cb09d113d5c5c0303d7df371c9cb881ebcc4c58d451246da0d done
+#11 exporting config sha256:89617d900edc36cccfb142ac5f1663eaf2243c58665cfc4ce2ffa3a44e8e7598 done
+#11 exporting attestation manifest sha256:cac68b6d9510e38594031697b37e4ca92fc7f7e2b1e2007ebc11a8e97fd463ca 0.0s done
+#11 exporting manifest list sha256:ce804f498cad7945b578ce380dc513c9b249e7f0888adec439a1b1b47b884304 0.0s done
+#11 naming to docker.io/library/debezium-pgbd-ensaio-1794166808-web:latest done
+#11 unpacking to docker.io/library/debezium-pgbd-ensaio-1794166808-web:latest done
+#11 DONE 0.1s
+
+#12 [web] resolving provenance for metadata file
+#12 DONE 0.0s
+ web  Built
+ Network debezium-pgbd-ensaio-1794166808_default  Creating
+ Network debezium-pgbd-ensaio-1794166808_default  Created
+ Volume debezium-pgbd-ensaio-1794166808_destino-dados  Creating
+ Volume debezium-pgbd-ensaio-1794166808_destino-dados  Created
+ Volume debezium-pgbd-ensaio-1794166808_kafka-dados  Creating
+ Volume debezium-pgbd-ensaio-1794166808_kafka-dados  Created
+ Volume debezium-pgbd-ensaio-1794166808_origem-dados  Creating
+ Volume debezium-pgbd-ensaio-1794166808_origem-dados  Created
+ Container debezium-pgbd-ensaio-1794166808-kafka-1  Creating
+ Container debezium-pgbd-ensaio-1794166808-origem-1  Creating
+ Container debezium-pgbd-ensaio-1794166808-destino-1  Creating
+ Container debezium-pgbd-ensaio-1794166808-kafka-1  Created
+ Container debezium-pgbd-ensaio-1794166808-origem-1  Created
+ Container debezium-pgbd-ensaio-1794166808-destino-1  Created
+ Container debezium-pgbd-ensaio-1794166808-connect-1  Creating
+ Container debezium-pgbd-ensaio-1794166808-connect-1  Created
+ Container debezium-pgbd-ensaio-1794166808-web-1  Creating
+ Container debezium-pgbd-ensaio-1794166808-web-1  Created
+ Container debezium-pgbd-ensaio-1794166808-kafka-1  Starting
+ Container debezium-pgbd-ensaio-1794166808-origem-1  Starting
+ Container debezium-pgbd-ensaio-1794166808-destino-1  Starting
+ Container debezium-pgbd-ensaio-1794166808-kafka-1  Started
+ Container debezium-pgbd-ensaio-1794166808-destino-1  Started
+ Container debezium-pgbd-ensaio-1794166808-origem-1  Started
+ Container debezium-pgbd-ensaio-1794166808-kafka-1  Waiting
+ Container debezium-pgbd-ensaio-1794166808-origem-1  Waiting
+ Container debezium-pgbd-ensaio-1794166808-destino-1  Waiting
+ Container debezium-pgbd-ensaio-1794166808-destino-1  Healthy
+ Container debezium-pgbd-ensaio-1794166808-origem-1  Healthy
+ Container debezium-pgbd-ensaio-1794166808-kafka-1  Healthy
+ Container debezium-pgbd-ensaio-1794166808-connect-1  Starting
+ Container debezium-pgbd-ensaio-1794166808-connect-1  Started
+ Container debezium-pgbd-ensaio-1794166808-connect-1  Waiting
+ Container debezium-pgbd-ensaio-1794166808-connect-1  Healthy
+ Container debezium-pgbd-ensaio-1794166808-web-1  Starting
+ Container debezium-pgbd-ensaio-1794166808-web-1  Started
+ Container debezium-pgbd-ensaio-1794166808-destino-1  Waiting
+ Container debezium-pgbd-ensaio-1794166808-kafka-1  Waiting
+ Container debezium-pgbd-ensaio-1794166808-connect-1  Waiting
+ Container debezium-pgbd-ensaio-1794166808-web-1  Waiting
+ Container debezium-pgbd-ensaio-1794166808-origem-1  Waiting
+ Container debezium-pgbd-ensaio-1794166808-connect-1  Healthy
+ Container debezium-pgbd-ensaio-1794166808-destino-1  Healthy
+ Container debezium-pgbd-ensaio-1794166808-kafka-1  Healthy
+ Container debezium-pgbd-ensaio-1794166808-origem-1  Healthy
+ Container debezium-pgbd-ensaio-1794166808-web-1  Healthy
+SERVICE   STATUS
+connect   Up 21 seconds (healthy)
+destino   Up 27 seconds (healthy)
+kafka     Up 27 seconds (healthy)
+origem    Up 27 seconds (healthy)
+web       Up 5 seconds (healthy)
+produtos-origem RUNNING (conector e tarefa)
+produtos-destino RUNNING (conector e tarefa)
+Subida e registro dos conectores: 31s
+Estado inicial verificado: bancos vazios, painel Kafka sem eventos e sink em execução.
+
+[3.2 s] Inserção de 101 com estoque 10
+Kafka: chave id=101, evento=c, partição:offset=0:0
+
+[origem] SELECT id, nome, estoque FROM public.produtos WHERE id = 101;
+ id  |  nome   | estoque
+-----+---------+---------
+ 101 | Caderno |      10
+(1 row)
+
+
+[destino] SELECT id, nome, estoque FROM public.produtos WHERE id = 101;
+ id  |  nome   | estoque
+-----+---------+---------
+ 101 | Caderno |      10
+(1 row)
+
+
+[6.4 s] Atualização do estoque de 101 para 7
+Kafka: chave id=101, evento=u, partição:offset=0:1
+
+[origem] SELECT id, nome, estoque FROM public.produtos WHERE id = 101;
+ id  |  nome   | estoque
+-----+---------+---------
+ 101 | Caderno |       7
+(1 row)
+
+
+[destino] SELECT id, nome, estoque FROM public.produtos WHERE id = 101;
+ id  |  nome   | estoque
+-----+---------+---------
+ 101 | Caderno |       7
+(1 row)
+
+
+[7.6 s] Exclusão de 101
+Kafka: chave id=101, evento=d, partição:offset=0:2
+Kafka: chave id=101, evento=tombstone, partição:offset=0:3
+
+[origem] SELECT id, nome, estoque FROM public.produtos WHERE id = 101;
+ id | nome | estoque
+----+------+---------
+(0 rows)
+
+
+[destino] SELECT id, nome, estoque FROM public.produtos WHERE id = 101;
+ id | nome | estoque
+----+------+---------
+(0 rows)
+
+
+[9.5 s] Inserção de 102 com o sink pausado e origem em RUNNING
+Kafka: chave id=102, evento=c, partição:offset=0:4
+
+[origem] SELECT id, nome, estoque FROM public.produtos WHERE id = 102;
+ id  |  nome  | estoque
+-----+--------+---------
+ 102 | Caneta |      10
+(1 row)
+
+
+[destino] SELECT id, nome, estoque FROM public.produtos WHERE id = 102;
+ id | nome | estoque
+----+------+---------
+(0 rows)
+
+
+[10.2 s] Retomada do sink e chegada de 102 ao destino
+
+[origem] SELECT id, nome, estoque FROM public.produtos WHERE id = 102;
+ id  |  nome  | estoque
+-----+--------+---------
+ 102 | Caneta |      10
+(1 row)
+
+
+[destino] SELECT id, nome, estoque FROM public.produtos WHERE id = 102;
+ id  |  nome  | estoque
+-----+--------+---------
+ 102 | Caneta |      10
+(1 row)
+
+
+[10.4 s] Roteiro técnico concluído, incluindo consultas e capturas
+ Container debezium-pgbd-ensaio-1794166808-web-1  Stopping
+ Container debezium-pgbd-ensaio-1794166808-web-1  Stopped
+ Container debezium-pgbd-ensaio-1794166808-web-1  Removing
+ Container debezium-pgbd-ensaio-1794166808-web-1  Removed
+ Container debezium-pgbd-ensaio-1794166808-connect-1  Stopping
+ Container debezium-pgbd-ensaio-1794166808-connect-1  Stopped
+ Container debezium-pgbd-ensaio-1794166808-connect-1  Removing
+ Container debezium-pgbd-ensaio-1794166808-connect-1  Removed
+ Container debezium-pgbd-ensaio-1794166808-kafka-1  Stopping
+ Container debezium-pgbd-ensaio-1794166808-origem-1  Stopping
+ Container debezium-pgbd-ensaio-1794166808-destino-1  Stopping
+ Container debezium-pgbd-ensaio-1794166808-origem-1  Stopped
+ Container debezium-pgbd-ensaio-1794166808-origem-1  Removing
+ Container debezium-pgbd-ensaio-1794166808-destino-1  Stopped
+ Container debezium-pgbd-ensaio-1794166808-destino-1  Removing
+ Container debezium-pgbd-ensaio-1794166808-origem-1  Removed
+ Container debezium-pgbd-ensaio-1794166808-destino-1  Removed
+ Container debezium-pgbd-ensaio-1794166808-kafka-1  Stopped
+ Container debezium-pgbd-ensaio-1794166808-kafka-1  Removing
+ Container debezium-pgbd-ensaio-1794166808-kafka-1  Removed
+ Volume debezium-pgbd-ensaio-1794166808_kafka-dados  Removing
+ Volume debezium-pgbd-ensaio-1794166808_destino-dados  Removing
+ Volume debezium-pgbd-ensaio-1794166808_origem-dados  Removing
+ Network debezium-pgbd-ensaio-1794166808_default  Removing
+ Volume debezium-pgbd-ensaio-1794166808_kafka-dados  Removed
+ Volume debezium-pgbd-ensaio-1794166808_destino-dados  Removed
+ Volume debezium-pgbd-ensaio-1794166808_origem-dados  Removed
+ Network debezium-pgbd-ensaio-1794166808_default  Removed

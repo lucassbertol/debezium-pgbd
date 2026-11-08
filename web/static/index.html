@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CDC em operação · Catálogo</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script defer src="/static/app.js"></script>
+</head>
+<body>
+  <main>
+    <header class="masthead">
+      <h1>Demonstração CDC em um Banco de dados</h1>
+    </header>
+
+    <div class="flow">
+      <section aria-labelledby="origin-title">
+        <header class="panel-head">
+          <p class="eyebrow"><span>01</span> POSTGRESQL</p>
+          <h2 id="origin-title">Origem</h2>
+          <p>Escreva em <code>public.produtos</code>.</p>
+        </header>
+        <form id="product-form">
+          <h3 id="form-title">Novo produto</h3>
+          <div class="fields">
+            <label>ID<input id="product-id" name="id" type="number" step="1" min="-2147483648" max="2147483647" required></label>
+            <label>Estoque<input id="product-stock" name="estoque" type="number" step="1" min="0" max="2147483647" required></label>
+            <label class="name-field">Nome<input id="product-name" name="nome" maxlength="120" required></label>
+          </div>
+          <div class="actions">
+            <button id="save-product">Inserir produto</button>
+            <button id="cancel-edit" type="button" class="secondary" hidden>Cancelar</button>
+          </div>
+          <p id="product-feedback" class="feedback"></p>
+        </form>
+        <div id="origem-data" class="data"><p class="message">Carregando produtos…</p></div>
+      </section>
+
+      <section aria-labelledby="event-title">
+        <header class="panel-head">
+          <p class="eyebrow"><span>02</span> KAFKA</p>
+          <h2 id="event-title">Eventos</h2>
+          <p>Últimos 40 eventos do tópico <code>catalogo.public.produtos</code>.</p>
+        </header>
+        <div id="events-data" class="data"><p class="message">Conectando ao Kafka…</p></div>
+      </section>
+
+      <section aria-labelledby="dest-title">
+        <header class="panel-head">
+          <p class="eyebrow"><span>03</span> POSTGRESQL</p>
+          <h2 id="dest-title">Destino</h2>
+          <p>Confira o que o sink já aplicou.</p>
+        </header>
+        <div class="sink">
+          <div class="sink-label">
+            <h3>JDBC Sink</h3>
+            <span id="sink-state" class="badge" role="status">Carregando</span>
+          </div>
+          <div class="actions">
+            <button id="pause" class="secondary" disabled>Pausar sink</button>
+            <button id="resume" class="secondary" disabled>Retomar sink</button>
+          </div>
+          <p id="sink-feedback" class="feedback"></p>
+        </div>
+        <div id="destino-data" class="data"><p class="message">Carregando produtos…</p></div>
+      </section>
+    </div>
+  </main>
+  <div id="notification" role="status" aria-atomic="true"></div>
+</body>
+</html>

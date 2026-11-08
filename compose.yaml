@@ -1,0 +1,96 @@
+services:
+  origem:
+    image: postgres:17.11-alpine
+    command: ["postgres", "-c", "wal_level=logical"]
+    environment: &postgres-env
+      POSTGRES_DB: catalogo
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: demo-postgres
+    volumes:
+      - origem-dados:/var/lib/postgresql/data
+      - ./sql/produtos.sql:/docker-entrypoint-initdb.d/01-produtos.sql:ro
+      - ./sql/origem.sql:/docker-entrypoint-initdb.d/02-origem.sql:ro
+    healthcheck: &postgres-health
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "catalogo"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  destino:
+    image: postgres:17.11-alpine
+    environment: *postgres-env
+    volumes:
+      - destino-dados:/var/lib/postgresql/data
+      - ./sql/produtos.sql:/docker-entrypoint-initdb.d/01-produtos.sql:ro
+    healthcheck: *postgres-health
+
+  kafka:
+    image: apache/kafka:4.1.1
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    volumes:
+      - kafka-dados:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "/opt/kafka/bin/kafka-topics.sh", "--bootstrap-server", "kafka:9092", "--list"]
+      interval: 5s
+      timeout: 8s
+      retries: 20
+
+  connect:
+    image: quay.io/debezium/connect:3.4.3.Final@sha256:4f807bd409b47268077e1142524f368db170560d5caceaee48a6a7a7fd288570
+    depends_on:
+      kafka:
+        condition: service_healthy
+      origem:
+        condition: service_healthy
+      destino:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8083:8083"
+    environment:
+      BOOTSTRAP_SERVERS: kafka:9092
+      GROUP_ID: catalogo-connect
+      CONFIG_STORAGE_TOPIC: catalogo-connect-configs
+      OFFSET_STORAGE_TOPIC: catalogo-connect-offsets
+      STATUS_STORAGE_TOPIC: catalogo-connect-status
+      CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      STATUS_STORAGE_REPLICATION_FACTOR: 1
+      KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "true"
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8083/connector-plugins"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  web:
+    build: ./web
+    depends_on:
+      connect:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      ORIGEM_DSN: postgresql://postgres:demo-postgres@origem:5432/catalogo
+      DESTINO_DSN: postgresql://postgres:demo-postgres@destino:5432/catalogo
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  origem-dados:
+  destino-dados:
+  kafka-dados:

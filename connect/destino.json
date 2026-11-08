@@ -1,0 +1,14 @@
+{
+  "connector.class": "io.debezium.connector.jdbc.JdbcSinkConnector",
+  "tasks.max": "1",
+  "topics": "catalogo.public.produtos",
+  "connection.url": "jdbc:postgresql://destino:5432/catalogo?currentSchema=public",
+  "connection.username": "postgres",
+  "connection.password": "demo-postgres",
+  "collection.name.format": "produtos",
+  "schema.evolution": "none",
+  "insert.mode": "upsert",
+  "delete.enabled": "true",
+  "primary.key.mode": "record_key",
+  "primary.key.fields": "id"
+}

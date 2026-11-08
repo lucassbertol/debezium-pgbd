@@ -1,0 +1,16 @@
+{
+  "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+  "tasks.max": "1",
+  "database.hostname": "origem",
+  "database.port": "5432",
+  "database.user": "cdc",
+  "database.password": "demo-cdc",
+  "database.dbname": "catalogo",
+  "topic.prefix": "catalogo",
+  "plugin.name": "pgoutput",
+  "publication.name": "produtos_publicacao",
+  "publication.autocreate.mode": "disabled",
+  "slot.name": "produtos_slot",
+  "table.include.list": "public.produtos",
+  "snapshot.mode": "initial"
+}
