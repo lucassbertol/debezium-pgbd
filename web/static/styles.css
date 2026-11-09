@@ -71,6 +71,7 @@ details { padding: 10px 16px; border-bottom: 1px solid var(--rule); }
 details:last-child { border-bottom: 0; }
 summary { cursor: pointer; }
 summary .badge { margin: 0 5px; }
+.latency { margin-right: 8px; color: var(--muted); font-family: ui-monospace, monospace; font-size: .78rem; }
 pre { margin-bottom: 0; padding: 10px; max-height: 260px; overflow: auto; border: 1px solid var(--rule); background: var(--paper); font-size: .78rem; }
 @media (max-width: 960px) {
   .flow { grid-template-columns: 1fr; }

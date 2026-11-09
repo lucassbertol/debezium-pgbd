@@ -158,8 +158,13 @@ function eventsList(events) {
     details.open = open.has(details.dataset.event);
     const summary = element("summary");
     summary.append(element("span", "ID " + event.id, "number"),
-      element("span", operations[event.op] ?? event.op, "badge"),
-      element("span", "Ver JSON"));
+      element("span", operations[event.op] ?? event.op, "badge"));
+    if (Number.isInteger(event.captura_ms)) {
+      const delay = element("span", `captura ${event.captura_ms} ms`, "latency");
+      delay.title = "Diferença entre source.ts_ms (commit na origem) e ts_ms (processamento pelo Debezium)";
+      summary.append(delay);
+    }
+    summary.append(element("span", "Ver JSON"));
     const json = JSON.stringify({ chave: event.key, valor: event.value }, null, 2);
     const payload = element("pre", json);
     payload.tabIndex = 0;

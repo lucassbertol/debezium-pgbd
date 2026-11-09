@@ -2,46 +2,82 @@
 
 Ensaio executado em 8 de novembro de 2026 no Chromium, com projeto Compose separado, volumes novos e ambos os conectores registrados conforme o README. Antes da primeira operação, os dois bancos estavam vazios, o painel Kafka aguardava o primeiro evento e o sink estava em execução.
 
+## Ambiente usado na apresentação
+
+A apresentação usa **somente** o ambiente descartável criado pelo inicializador. Os comandos abaixo valem para ele.
+
+| Item | Valor |
+| --- | --- |
+| Subida (Windows) | `powershell -NoProfile -ExecutionPolicy Bypass -File .\iniciar-web.ps1` |
+| Subida (Linux) | `./iniciar-web.sh` |
+| Interface | `http://127.0.0.1:18000/` |
+| API do Kafka Connect | `http://127.0.0.1:18083/` |
+| Projeto Compose | `debezium-pgbd-demo-vazia` |
+| `psql` da origem | `psql-origem.cmd` (Windows) ou `./psql.sh origem` (Linux) |
+| `psql` do destino | `psql-destino.cmd` (Windows) ou `./psql.sh destino` (Linux) |
+
+Os atalhos `psql-*.cmd` funcionam com duplo clique e não dependem da política de execução do PowerShell. Eles equivalem a:
+
+```bash
+docker compose -p debezium-pgbd-demo-vazia -f compose.yaml -f compose.demo.yaml exec origem psql -U postgres -d catalogo
+```
+
+Não use `docker compose exec origem ...` sem `-p` e `-f`. Esse comando aponta para o ambiente normal (porta 8000), não para o da apresentação.
+
+## Checklist antes de subir ao palco
+
+1. Docker Desktop aberto, em modo de contêineres Linux.
+2. Rodar o inicializador e esperar `Abra http://127.0.0.1:18000/`.
+3. Abrir a interface no navegador, com zoom ajustado para o projetor.
+4. Abrir os dois terminais `psql` (origem e destino) e deixar lado a lado com o navegador.
+5. Confirmar o selo **Em execução** no painel Destino.
+6. Deixar o PPTX aberto no slide de abertura.
+
 ## Sequência para a apresentação
 
-Mostre os três painéis lado a lado e deixe duas sessões SQL prontas. Depois de cada ação, abra o JSON no painel Eventos para mostrar o `id` da chave e a operação. Consulte o mesmo produto nos dois bancos antes de avançar.
+Mostre os três painéis lado a lado. Depois de cada ação, abra o JSON no painel Eventos para mostrar o `id` da chave, a operação e o tempo de captura exibido ao lado do evento (diferença entre `source.ts_ms`, o commit na origem, e `ts_ms`, o processamento pelo Debezium). Consulte o mesmo produto nos dois bancos antes de avançar.
 
 | Passo | Ação | O que mostrar | Captura |
 | --- | --- | --- | --- |
-| 1 | Inserir Caderno, ID 101, estoque 10. | Evento `c` para 101 e estoque 10 nos dois bancos. | [Inserção](01-insercao.png) |
-| 2 | Executar `UPDATE public.produtos SET estoque = 7 WHERE id = 101;` no `psql` da origem. | Evento `u` para 101 e estoque 7 nos dois bancos. | [Atualização](02-atualizacao.png) |
-| 3 | Excluir 101. | Evento `d` seguido do tombstone com a mesma chave. As duas consultas retornam zero linhas. | [Exclusão](03-exclusao.png) |
-| 4 | Pausar o sink, aguardar **Pausado** e inserir Caneta, ID 102, estoque 10. | Origem em execução, evento `c` para 102 e linha ausente no destino. | [Sink pausado](04-sink-pausado.png) |
+| 1 | Inserir Caderno, ID 101, estoque 10, pela tela. | Evento `c` para 101 e estoque 10 nos dois bancos. | [Inserção](01-insercao.png) |
+| 2 | Executar `UPDATE public.produtos SET estoque = 7 WHERE id = 101;` no `psql` da origem. | Evento `u` para 101, com `before` nulo (REPLICA IDENTITY padrão) e `after` com estoque 7. Estoque 7 nos dois bancos. | [Atualização](02-atualizacao.png) |
+| 3 | Excluir 101 pela tela. | Evento `d` seguido do tombstone com a mesma chave. As duas consultas retornam zero linhas. | [Exclusão](03-exclusao.png) |
+| 4 | Pausar o sink, aguardar **Pausado** e inserir Caneta, ID 102, estoque 10. | Origem com a linha, evento `c` para 102 e linha ausente no destino. | [Sink pausado](04-sink-pausado.png) |
 | 5 | Retomar o sink e aguardar **Em execução**. | A linha 102 aparece no destino com estoque 10. | [Sink retomado](05-sink-retomado.png) |
 
-### Consultas da origem
-
-```bash
-docker compose exec origem psql -U postgres -d catalogo
-```
+### Consultas (nos dois terminais `psql`)
 
 ```sql
 SELECT id, nome, estoque FROM public.produtos WHERE id = 101;
 SELECT id, nome, estoque FROM public.produtos WHERE id = 102;
 ```
 
-### Consultas do destino
-
-```bash
-docker compose exec destino psql -U postgres -d catalogo
-```
+Consulta opcional, se perguntarem sobre o slot de replicação (no `psql` da origem):
 
 ```sql
-SELECT id, nome, estoque FROM public.produtos WHERE id = 101;
-SELECT id, nome, estoque FROM public.produtos WHERE id = 102;
+SELECT slot_name, plugin, active, confirmed_flush_lsn FROM pg_replication_slots;
 ```
 
 ## Recuperação durante a demonstração
 
-1. Confira `docker compose ps` e rode `docker compose logs --tail=50 <serviço>` para o serviço com falha. Para recriá-lo preservando os dados, use `docker compose up -d --wait <serviço>`.
-2. Consulte o endpoint de status dos dois conectores indicado no README. Se um estiver ausente, registre-o novamente. Se o sink estiver pausado, use **Retomar sink** ou `curl -fsS -X PUT http://127.0.0.1:8083/connectors/produtos-destino/resume`. Aguarde o conector e a tarefa em `RUNNING` antes de continuar.
-3. Se só a interface falhar, faça os comandos abaixo no PostgreSQL de origem e confira o tópico com o consumidor de console do README. Execute um comando por vez e consulte o destino antes de prosseguir. Para o teste assíncrono, use a API do Connect com `pause` e depois `resume`.
-4. Em caso de interrupção no meio da sequência, consulte primeiro os IDs 101 e 102 nos dois bancos. Retome do passo correspondente ao estado observado. Preserve os volumes durante a recuperação.
+Execute os comandos na pasta do projeto. No Windows PowerShell, use `curl.exe` (o `curl` do PowerShell 5.1 é um apelido de outro comando e não aceita estas opções).
+
+```powershell
+$demo = @('compose', '-p', 'debezium-pgbd-demo-vazia', '-f', 'compose.yaml', '-f', 'compose.demo.yaml')
+docker @demo ps
+docker @demo logs --tail=50 connect
+docker @demo up -d --wait connect
+curl.exe -fsS http://127.0.0.1:18083/connectors/produtos-origem/status
+curl.exe -fsS http://127.0.0.1:18083/connectors/produtos-destino/status
+curl.exe -fsS -X PUT http://127.0.0.1:18083/connectors/produtos-destino/resume
+```
+
+1. Rode `docker @demo ps` e veja os logs do serviço com falha. Para recriá-lo preservando os dados, use `docker @demo up -d --wait <serviço>`.
+2. Consulte o status dos dois conectores. Se o sink estiver pausado, use **Retomar sink** ou o `resume` acima. Aguarde o conector e a tarefa em `RUNNING`.
+3. Se um conector não existir mais, rode de novo `docker @demo exec -T web python /demo/inicializar.py`. Ele registra os dois conectores e depois confere se os painéis estão vazios. Com produtos já cadastrados, ele termina com o aviso "não iniciou vazio", que nesse caso pode ser ignorado: os conectores já foram registrados.
+4. Se só a interface falhar, faça os comandos abaixo no `psql` da origem, um por vez, e consulte o destino antes de prosseguir. Para o teste assíncrono, use `curl.exe -fsS -X PUT http://127.0.0.1:18083/connectors/produtos-destino/pause` e depois `resume`.
+5. Em caso de interrupção no meio da sequência, consulte primeiro os IDs 101 e 102 nos dois bancos e retome do passo correspondente. Preserve os volumes durante a recuperação.
+6. Se nada funcionar, apresente os slides com as capturas do ensaio. Elas são evidências reais da solução funcionando.
 
 ```sql
 INSERT INTO public.produtos (id, nome, estoque) VALUES (101, 'Caderno', 10);
@@ -53,6 +89,16 @@ INSERT INTO public.produtos (id, nome, estoque) VALUES (102, 'Caneta', 10);
 
 ## Registro do ensaio
 
-A subida em volumes novos e o registro dos conectores levaram 31 s, com as imagens já disponíveis. A execução automatizada do roteiro técnico levou 12,5 s, incluindo interações no navegador, alteração via `psql`, consultas e capturas. A fala e as transições dos slides serão cronometradas no ensaio completo.
+A subida em volumes novos e o registro dos conectores levaram 31 s, com as imagens já disponíveis. A execução automatizada do roteiro técnico levou 12,5 s, incluindo interações no navegador, alteração via `psql`, consultas e capturas. As capturas foram feitas antes da inclusão do tempo de captura no painel Eventos, por isso ele não aparece nelas.
 
 O [registro de verificação](verificacao.txt) contém os tempos por passo, as chaves e operações observadas no Kafka e a saída das consultas reais nos dois bancos.
+
+## Ensaio cronometrado da fala (preencher)
+
+| Trecho | Previsto | Medido |
+| --- | --- | --- |
+| Eixo conceitual (Lucas, slides 1–8) | 8:45 | |
+| Eixo técnico (Renato, slides 9–13) | 4:00 | |
+| Demonstração (Renato, slides 14–19) | 7:15 | |
+| Conclusão e referências (Lucas, slides 20–21) | 1:00 | |
+| **Total** | **21:00** (limite de 20–25 min) | |

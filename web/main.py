@@ -37,6 +37,16 @@ class Product(StockUpdate):
     nome: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
 
 
+def capture_delay(value):
+    """Milissegundos entre o commit na origem (source.ts_ms) e o processamento pelo Debezium (ts_ms)."""
+    try:
+        payload = value["payload"]
+        delay = payload["ts_ms"] - payload["source"]["ts_ms"]
+    except (TypeError, KeyError):
+        return None
+    return delay if isinstance(delay, int) and delay >= 0 else None
+
+
 class EventFeed:
     def __init__(self):
         self.records = deque(maxlen=40)
@@ -76,6 +86,7 @@ class EventFeed:
                         "offset": message.offset(),
                         "id": key["payload"]["id"],
                         "op": value["payload"]["op"] if value is not None else "tombstone",
+                        "captura_ms": capture_delay(value),
                         "key": key,
                         "value": value,
                     }
