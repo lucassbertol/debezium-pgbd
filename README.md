@@ -114,9 +114,15 @@ docker compose -p debezium-pgbd-demo-vazia -f compose.yaml -f compose.demo.yaml 
 
 Para parar a instância, execute `docker compose -p debezium-pgbd-demo-vazia -f compose.yaml -f compose.demo.yaml down`.
 
-1. Em **Origem**, informe ID, nome e estoque e use **Inserir produto**. Use **Editar** para alterar o estoque e **Excluir** para remover a linha da origem.
+1. Em **Origem**, informe ID, nome e estoque e use **Inserir produto**. Abra **Consultar banco** para usar **Editar** ou **Excluir** na linha do produto.
 2. Em **Eventos**, confira a chave, a operação e o tempo de captura (`ts_ms − source.ts_ms`, do commit na origem ao processamento pelo Debezium) e abra **Ver JSON** para inspecionar o registro completo. O painel usa o consumidor Kafka dedicado `catalogo-interface` e mantém em memória os 40 eventos mais recentes recebidos.
 3. Em **Destino**, compare a linha com a origem. Use **Pausar sink**, espere **Pausado** e insira outro produto. Confira o evento no Kafka e a ausência da linha no destino. Use **Retomar sink** e verifique que a linha aparece. O backend consulta esse banco em transações somente leitura.
+
+O cronômetro **Tempo até o destino** acompanha a última inserção, atualização ou exclusão nova. A contagem começa quando o navegador observa o evento no Kafka e termina quando uma consulta ao PostgreSQL de destino confirma o estado esperado. O valor inclui a espera pela próxima consulta automática e é separado do tempo de captura mostrado no painel Eventos. Alterações feitas pelo `psql` também entram nessa medição.
+
+O painel **Eventos** mostra o estado do conector de captura do Debezium, que acompanha o WAL e publica no Kafka, e identifica o último evento observado. O painel **Destino** mostra separadamente o estado do Debezium JDBC Sink, responsável por ler o tópico e aplicar as mudanças no segundo PostgreSQL.
+
+Use **Consultar banco** em **Origem** ou **Destino** para abrir todas as linhas e colunas de `public.produtos` no PostgreSQL escolhido. A janela da origem permite editar e excluir produtos, e a do destino é somente leitura. Use **Atualizar visualização** para consultar novamente e **SQL executado** para inspecionar a instrução. Com o sink pausado, o produto `102` aparece na tabela da origem e só passa a aparecer no destino após a retomada.
 
 Para usar o ambiente normal, execute `docker compose up -d --build --wait` e registre os conectores com os comandos das seções anteriores. A [interface do ambiente normal](http://127.0.0.1:8000/) reutiliza seus volumes.
 
@@ -166,7 +172,7 @@ Antes da apresentação, subir o ambiente com o inicializador, verificar os dois
 | --- | --- | --- | --- |
 | 1. Inserção | Cadastrar o produto `101` com estoque `10`. | `op=c`, com a chave `101`. | O produto aparece com estoque `10`. |
 | 2. Atualização | Executar `UPDATE public.produtos SET estoque = 7 WHERE id = 101;` no `psql` da origem. | `op=u`, com o novo estoque. | O mesmo produto aparece com estoque `7`. |
-| 3. Exclusão | Excluir o produto `101`. | `op=d`, com a chave `101`. | A consulta pelo `id` retorna zero linhas. |
+| 3. Exclusão | Abrir **Consultar banco** na origem e excluir o produto `101`. | `op=d`, com a chave `101`. | A consulta pelo `id` retorna zero linhas. |
 | 4. Sincronização assíncrona | Pausar somente o sink, confirmar a pausa e cadastrar o produto `102`. | `op=c` aparece no tópico com o sink pausado. | O produto está na origem e ainda não aparece no destino. Depois de retomar o sink, ele aparece. |
 
 Os resultados da tabela são os critérios de sucesso da demonstração. Durante o ensaio, registrar capturas que mostrem o SQL executado, os eventos e as consultas no destino. Para o teste de pausa, guardar uma captura antes da retomada e outra depois.
@@ -175,20 +181,20 @@ Os resultados da tabela são os critérios de sucesso da demonstração. Durante
 
 A avaliação divide o trabalho em **fundamentação teórica (50%)** e **demonstração prática ao vivo (50%)**. O roteiro abaixo separa a apresentação nos três eixos exigidos e soma 21 minutos, dentro do limite de 20–25 minutos do enunciado.
 
-- [Slides finais em PPTX](apresentacao/CDC-com-Debezium-e-PostgreSQL-alinhado.pptx)
+- [Slides finais em PPTX](apresentacao/CDC-com-Debezium-e-PostgreSQL-final.pptx)
 - [Roteiro de demonstração, consultas SQL e recuperação](evidencias/etapa-5/roteiro.md)
 
 | Eixo | Responsável proposto | Tempo | Conteúdo |
 | --- | --- | --- | --- |
 | Conceitual (slides 1–8) | Lucas | 8:45 | Problema, conceitos, WAL, alternativas (triggers, polling, replicação nativa), vantagens, limitações e garantias. |
 | Técnico (slides 9–13) | Renato | 4:00 | Estudo de caso, diagrama do fluxo, tópico como log, quatro pré-requisitos da origem e configuração do sink. |
-| Demonstração (slides 14–19) | Renato | 7:15 | Primeiro as capturas de tela nos slides, depois a execução ao vivo e a verificação nos dois bancos. |
-| Conclusão e referências (slides 20–21) | Lucas | 1:00 | Quando usar e quando não usar CDC com Debezium. |
+| Demonstração (slides 14–20) | Renato | 7:15 | Primeiro as capturas da interface e das consultas, depois a execução ao vivo e a verificação nos dois bancos. |
+| Conclusão e referências (slides 21–22) | Lucas | 1:00 | Por que usamos Debezium e quando uma cópia nativa é suficiente. |
 
 Cada integrante apresenta pelo menos um eixo completo. Para a entrega, o grupo deve:
 
 - A dupla respeita o limite de três integrantes. O grupo confirmou a exclusividade do Tema 10 na turma e o envio da composição e do tema ao professor (`mergen@inf.ufsm.br`).
-- Cronometrar o ensaio completo com a fala de Lucas e Renato e as transições para a demonstração (tabela no final do [roteiro](evidencias/etapa-5/roteiro.md)). No ensaio automatizado, a sequência técnica levou 12,5 segundos, incluindo interações, comandos SQL e capturas.
+- Cronometrar o ensaio completo com a fala de Lucas e Renato e as transições para a demonstração (tabela no final do [roteiro](evidencias/etapa-5/roteiro.md)). No ensaio automatizado, a sequência técnica levou 12,6 segundos, incluindo interações, comandos SQL e capturas.
 - Incluir nos slides as capturas da solução funcionando, pois a avaliação considera o que foi realizado até a data de entrega.
 - Entregar pelo Moodle os mesmos slides que serão apresentados. Basta um envio por grupo, na data comum a confirmar. A data da apresentação de cada grupo será divulgada com antecedência.
 

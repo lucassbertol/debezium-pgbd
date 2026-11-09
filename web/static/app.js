@@ -6,7 +6,9 @@ const idInput = byId("product-id");
 const nameInput = byId("product-name");
 const stockInput = byId("product-stock");
 const save = byId("save-product");
-const cancel = byId("cancel-edit");
+const editForm = byId("query-edit-form");
+const editStock = byId("query-edit-stock");
+const editSave = byId("query-save");
 const pause = byId("pause");
 const resume = byId("resume");
 let editing = null;
@@ -57,51 +59,37 @@ function actionResult(id, text, failed = false) {
 
 function setEditing(product) {
   editing = product?.id ?? null;
-  form.reset();
+  editForm.hidden = !product;
   if (product) {
-    idInput.value = product.id;
-    nameInput.value = product.nome;
-    stockInput.value = product.estoque;
-    stockInput.focus();
+    byId("query-edit-title").textContent = `Alterar estoque do produto ${product.id}`;
+    editStock.value = product.estoque;
+    editStock.focus();
   }
-  idInput.readOnly = nameInput.readOnly = Boolean(product);
-  cancel.hidden = !product;
-  byId("form-title").textContent = product ? "Alterar estoque" : "Novo produto";
-  save.textContent = product ? "Salvar estoque" : "Inserir produto";
 }
 
-async function productAction(action, onSuccess, success) {
+async function productAction(action, onSuccess, success, feedbackId = "product-feedback") {
   if (productBusy) return;
   productBusy = true;
-  save.disabled = cancel.disabled = true;
-  feedback("product-feedback", "Enviando alteração…");
+  save.disabled = editSave.disabled = true;
+  feedback(feedbackId, "Enviando alteração…");
   try {
     await action();
     onSuccess();
-    actionResult("product-feedback", success);
+    actionResult(feedbackId, success);
   } catch (error) {
-    actionResult("product-feedback", error.message, true);
+    actionResult(feedbackId, error.message, true);
   } finally {
     productBusy = false;
-    save.disabled = cancel.disabled = false;
+    save.disabled = editSave.disabled = false;
   }
 }
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
-  const estoque = stockInput.valueAsNumber;
-  if (editing !== null) {
-    productAction(() => api("/produtos/origem/" + editing, "PATCH", { estoque }),
-      () => setEditing(null), `Estoque do produto ${editing} alterado para ${estoque} na origem.`);
-  } else {
-    productAction(() => api("/produtos/origem", "POST", {
-      id: idInput.valueAsNumber, nome: nameInput.value.trim(), estoque,
-    }), () => setEditing(null), `Produto ${idInput.valueAsNumber} inserido na origem.`);
-  }
-});
-cancel.addEventListener("click", () => {
-  setEditing(null);
-  idInput.focus();
+  const id = idInput.valueAsNumber;
+  productAction(() => api("/produtos/origem", "POST", {
+    id, nome: nameInput.value.trim(), estoque: stockInput.valueAsNumber,
+  }), () => form.reset(), `Produto ${id} inserido na origem.`);
 });
 
 function rowButton(text, product, className, action) {
@@ -135,8 +123,7 @@ function productsTable(products, writable) {
         rowButton("Editar", product, "secondary", () => setEditing(product)),
         rowButton("Excluir", product, "danger", () => {
           if (!window.confirm("Excluir o produto " + product.id + " da origem?")) return;
-          productAction(() => api("/produtos/origem/" + product.id, "DELETE"),
-            () => { if (editing === product.id) setEditing(null); },
+          changeProductInDialog(product.id, "DELETE", undefined,
             `Produto ${product.id} excluído da origem.`);
         }),
       );
@@ -146,7 +133,119 @@ function productsTable(products, writable) {
   return table;
 }
 
+const queryDialog = byId("database-query");
+const queryOutput = byId("query-output");
+const queryRefresh = byId("query-refresh");
+let queryBank;
+let queryRequest;
+
+for (const button of document.querySelectorAll("[data-query-bank]")) {
+  button.addEventListener("click", () => {
+    queryBank = button.dataset.queryBank;
+    setEditing(null);
+    byId("query-action-feedback").hidden = queryBank !== "origem";
+    feedback("query-action-feedback", "");
+    byId("query-title").textContent = button.getAttribute("aria-label");
+    byId("query-sql-details").open = false;
+    queryDialog.showModal();
+    loadDatabase();
+  });
+}
+
+byId("query-close").addEventListener("click", () => queryDialog.close());
+
+async function loadDatabase() {
+  const request = queryRequest = Symbol();
+  const bank = queryBank;
+  queryOutput.hidden = true;
+  queryRefresh.disabled = true;
+  feedback("query-status", "Consultando o PostgreSQL…");
+  try {
+    const result = await api(`/consulta/${bank}`);
+    if (queryRequest !== request || !queryDialog.open) return;
+    byId("query-sql").textContent = result.sql;
+    const rows = productsTable(result.rows, bank === "origem");
+    if (result.rows.length) rows.setAttribute("aria-label", `Produtos no banco de ${bank}`);
+    byId("query-rows").replaceChildren(rows);
+    const count = result.rows.length;
+    feedback("query-status", count === 1 ? "1 linha retornada." : `${count} linhas retornadas.`);
+    queryOutput.hidden = false;
+  } catch (error) {
+    if (queryRequest === request && queryDialog.open) feedback("query-status", error.message, true);
+  } finally {
+    if (queryRequest === request) queryRefresh.disabled = false;
+  }
+}
+
+queryRefresh.addEventListener("click", loadDatabase);
+
+function changeProductInDialog(id, method, data, message) {
+  productAction(() => api(`/produtos/origem/${id}`, method, data), () => {
+    if (queryDialog.open && queryBank === "origem") {
+      if (editing === id) setEditing(null);
+      loadDatabase();
+    }
+  }, message, "query-action-feedback");
+}
+
+editForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  if (editing === null) return;
+  const estoque = editStock.valueAsNumber;
+  changeProductInDialog(editing, "PATCH", { estoque },
+    `Estoque do produto ${editing} alterado para ${estoque} na origem.`);
+});
+
+byId("query-cancel-edit").addEventListener("click", () => {
+  setEditing(null);
+  queryRefresh.focus();
+});
+
 const operations = { c: "Inserção", u: "Atualização", d: "Exclusão", r: "Snapshot", tombstone: "Tombstone" };
+const elapsedSeconds = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+let latestChange = null;
+let measurement = null;
+
+function formatElapsed(started) {
+  return elapsedSeconds.format((performance.now() - started) / 1000) + " s";
+}
+
+function observeChange(events) {
+  if (!events) return;
+  const event = events.find((entry) => ["c", "u", "d"].includes(entry.op) &&
+    entry.value.payload.ts_ms >= performance.timeOrigin);
+  const identity = event ? `${event.partition}:${event.offset}:${event.value.payload.ts_ms}` : null;
+  const previous = latestChange;
+  latestChange = identity;
+  if (!event || previous === identity) return;
+
+  clearInterval(measurement?.ticker);
+  const started = performance.now();
+  const elapsed = byId("replication-elapsed");
+  elapsed.hidden = false;
+  const tick = () => { elapsed.textContent = formatElapsed(started); };
+  tick();
+  measurement = { event, started, ticker: setInterval(tick, 100) };
+  byId("replication-status").textContent =
+    `Aguardando no destino: ${operations[event.op].toLowerCase()} do produto ${event.id}.`;
+}
+
+function confirmDestination(products) {
+  if (!measurement || !products) return;
+  const { event, started, ticker } = measurement;
+  const row = products.find((product) => product.id === event.id);
+  const after = event.value.payload.after;
+  const confirmed = event.op === "d" ? !row : row && after &&
+    row.nome === after.nome && row.estoque === after.estoque;
+  if (!confirmed) return;
+
+  clearInterval(ticker);
+  measurement = null;
+  const elapsed = formatElapsed(started);
+  byId("replication-elapsed").textContent = elapsed;
+  byId("replication-status").textContent =
+    `${operations[event.op]} do produto ${event.id} observada no destino após ${elapsed}.`;
+}
 
 function eventsList(events) {
   if (!events.length) return element("p", "Aguardando o primeiro evento do catálogo.", "message");
@@ -179,9 +278,11 @@ async function panel(id, path, render) {
   try {
     const data = await api(path);
     const key = JSON.stringify(data);
-    if (rendered.get(id) === key) return;
-    byId(id).replaceChildren(render(data));
-    rendered.set(id, key);
+    if (rendered.get(id) !== key) {
+      byId(id).replaceChildren(render(data));
+      rendered.set(id, key);
+    }
+    return data;
   } catch (error) {
     if (rendered.get(id) === error.message) return;
     byId(id).replaceChildren(element("p", error.message, "message error"));
@@ -204,17 +305,50 @@ async function changeSink(action, target) {
 pause.addEventListener("click", () => changeSink("pause", "PAUSED"));
 resume.addEventListener("click", () => changeSink("resume", "RUNNING"));
 
-async function refreshSink() {
-  const badge = byId("sink-state");
+function showConnectorState(id, state) {
+  const badge = byId(id);
+  const settled = state.tasks.length > 0 && state.tasks.every((task) => task === state.connector);
+  const failed = state.connector === "FAILED" || state.tasks.includes("FAILED");
+  const observed = failed ? "FAILED" : settled ? state.connector : "TRANSITION";
+  const labels = { RUNNING: "Em execução", PAUSED: "Pausado", FAILED: "Falha", TRANSITION: "Em transição" };
+  const label = labels[observed] ?? observed;
+  if (badge.textContent !== label) badge.textContent = label;
+  badge.dataset.state = observed;
+  badge.title = "Conector: " + state.connector + " · Tarefas: " + state.tasks.join(", ");
+  return observed;
+}
+
+function showConnectorUnavailable(id, error) {
+  const badge = byId(id);
+  if (badge.textContent !== "Indisponível") badge.textContent = "Indisponível";
+  badge.dataset.state = "FAILED";
+  badge.title = error.message;
+}
+
+async function refreshSource() {
   try {
-    const state = await api("/sink");
-    const settled = state.tasks.length > 0 && state.tasks.every((task) => task === state.connector);
-    const observed = settled ? state.connector : state.tasks.includes("FAILED") ? "FAILED" : "TRANSITION";
-    const labels = { RUNNING: "Em execução", PAUSED: "Pausado", FAILED: "Falha", TRANSITION: "Em transição" };
-    const label = labels[observed] ?? observed;
-    if (badge.textContent !== label) badge.textContent = label;
-    badge.dataset.state = observed;
-    badge.title = "Conector: " + state.connector + " · Tarefas: " + state.tasks.join(", ");
+    const observed = showConnectorState("source-state", await api("/source"));
+    const activity = {
+      RUNNING: "Acompanha o WAL da origem e publica as mudanças no Kafka.",
+      PAUSED: "Captura pausada. O conector aguarda a retomada.",
+      FAILED: "Falha no conector de captura. Confira o Kafka Connect.",
+    };
+    feedback("source-activity", activity[observed] ?? "Aguardando a tarefa de captura.", observed === "FAILED");
+  } catch (error) {
+    showConnectorUnavailable("source-state", error);
+    feedback("source-activity", error.message, true);
+  }
+}
+
+async function refreshSink() {
+  try {
+    const observed = showConnectorState("sink-state", await api("/sink"));
+    const activity = {
+      RUNNING: "Consome eventos do Kafka e grava as alterações no PostgreSQL de destino.",
+      PAUSED: "Aplicação pausada. Os eventos continuam no tópico Kafka.",
+      FAILED: "Falha no conector de destino. Confira o Kafka Connect.",
+    };
+    feedback("sink-activity", activity[observed] ?? "Aguardando a tarefa de destino.", observed === "FAILED");
     if (sinkPending?.target === observed) {
       actionResult("sink-feedback", observed === "PAUSED" ? "Sink pausado." : "Sink retomado.");
       sinkPending = null;
@@ -225,9 +359,8 @@ async function refreshSink() {
     pause.disabled = Boolean(sinkPending) || observed !== "RUNNING";
     resume.disabled = Boolean(sinkPending) || observed !== "PAUSED";
   } catch (error) {
-    if (badge.textContent !== "Indisponível") badge.textContent = "Indisponível";
-    badge.dataset.state = "FAILED";
-    badge.title = error.message;
+    showConnectorUnavailable("sink-state", error);
+    feedback("sink-activity", "A aplicação no destino está com estado indisponível.", true);
     pause.disabled = resume.disabled = true;
     if (sinkPending) {
       sinkPending = null;
@@ -238,11 +371,22 @@ async function refreshSink() {
   }
 }
 
+async function refreshReplication() {
+  const events = await panel("events-data", "/eventos", eventsList);
+  if (events) {
+    const last = events.find((event) => event.op !== "tombstone");
+    feedback("source-last-event", last
+      ? `Último evento observado: ${operations[last.op] ?? last.op} do produto ${last.id}.`
+      : "Nenhum evento observado.");
+  }
+  observeChange(events);
+  if (measurement) confirmDestination(await api("/produtos/destino").catch(() => undefined));
+}
+
 async function refresh() {
   await Promise.all([
-    panel("origem-data", "/produtos/origem", (data) => productsTable(data, true)),
-    panel("destino-data", "/produtos/destino", (data) => productsTable(data, false)),
-    panel("events-data", "/eventos", eventsList),
+    refreshReplication(),
+    refreshSource(),
     refreshSink(),
   ]);
   setTimeout(refresh, 1000);

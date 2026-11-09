@@ -19,9 +19,10 @@
           <p class="eyebrow"><span>01</span> POSTGRESQL</p>
           <h2 id="origin-title">Origem</h2>
           <p>Escreva em <code>public.produtos</code>.</p>
+          <button type="button" class="secondary database-button" data-query-bank="origem" aria-label="Consultar banco de origem">Consultar banco</button>
         </header>
         <form id="product-form">
-          <h3 id="form-title">Novo produto</h3>
+          <h3>Novo produto</h3>
           <div class="fields">
             <label>ID<input id="product-id" name="id" type="number" step="1" min="-2147483648" max="2147483647" required></label>
             <label>Estoque<input id="product-stock" name="estoque" type="number" step="1" min="0" max="2147483647" required></label>
@@ -29,19 +30,25 @@
           </div>
           <div class="actions">
             <button id="save-product">Inserir produto</button>
-            <button id="cancel-edit" type="button" class="secondary" hidden>Cancelar</button>
           </div>
           <p id="product-feedback" class="feedback"></p>
         </form>
-        <div id="origem-data" class="data"><p class="message">Carregando produtos…</p></div>
       </section>
 
       <section aria-labelledby="event-title">
         <header class="panel-head">
-          <p class="eyebrow"><span>02</span> KAFKA</p>
+          <p class="eyebrow"><span>02</span> DEBEZIUM E KAFKA</p>
           <h2 id="event-title">Eventos</h2>
           <p>Últimos 40 eventos do tópico <code>catalogo.public.produtos</code> e o tempo do commit até a captura.</p>
         </header>
+        <div class="connector">
+          <div class="connector-label">
+            <h3>Debezium · Captura</h3>
+            <span id="source-state" class="badge" role="status">Carregando</span>
+          </div>
+          <p id="source-activity" class="connector-detail">Lê o WAL do PostgreSQL de origem e publica as alterações no Kafka.</p>
+          <p id="source-last-event" class="connector-detail">Nenhum evento observado.</p>
+        </div>
         <div id="events-data" class="data"><p class="message">Conectando ao Kafka…</p></div>
       </section>
 
@@ -50,22 +57,56 @@
           <p class="eyebrow"><span>03</span> POSTGRESQL</p>
           <h2 id="dest-title">Destino</h2>
           <p>Confira o que o sink já aplicou.</p>
+          <button type="button" class="secondary database-button" data-query-bank="destino" aria-label="Consultar banco de destino">Consultar banco</button>
         </header>
-        <div class="sink">
-          <div class="sink-label">
-            <h3>JDBC Sink</h3>
+        <div class="connector">
+          <div class="connector-label">
+            <h3>Debezium · JDBC Sink</h3>
             <span id="sink-state" class="badge" role="status">Carregando</span>
           </div>
+          <p id="sink-activity" class="connector-detail">Lê os eventos do Kafka e aplica as mudanças neste PostgreSQL.</p>
           <div class="actions">
             <button id="pause" class="secondary" disabled>Pausar sink</button>
             <button id="resume" class="secondary" disabled>Retomar sink</button>
           </div>
           <p id="sink-feedback" class="feedback"></p>
         </div>
-        <div id="destino-data" class="data"><p class="message">Carregando produtos…</p></div>
+        <div id="replication-timer" class="replication-timer">
+          <h3>Tempo até o destino</h3>
+          <p id="replication-status" role="status">Aguardando uma nova alteração no Kafka.</p>
+          <p id="replication-elapsed" class="number" aria-hidden="true" hidden></p>
+          <p class="timer-description">Do evento observado no Kafka à confirmação por consulta ao destino.</p>
+        </div>
       </section>
     </div>
   </main>
+  <dialog id="database-query" aria-labelledby="query-title">
+    <header class="query-header">
+      <h2 id="query-title">Consultar banco</h2>
+      <button id="query-close" type="button" class="secondary">Fechar</button>
+    </header>
+    <div class="query-toolbar">
+      <p>Banco <code>catalogo</code> · Tabela <code>public.produtos</code></p>
+      <button id="query-refresh" type="button" class="secondary">Atualizar visualização</button>
+    </div>
+    <form id="query-edit-form" hidden>
+      <h3 id="query-edit-title">Alterar estoque</h3>
+      <label>Novo estoque<input id="query-edit-stock" type="number" step="1" min="0" max="2147483647" required></label>
+      <div class="actions">
+        <button id="query-save" type="submit">Salvar estoque</button>
+        <button id="query-cancel-edit" type="button" class="secondary">Cancelar</button>
+      </div>
+    </form>
+    <p id="query-action-feedback" class="message" role="status" hidden></p>
+    <p id="query-status" class="message" role="status"></p>
+    <div id="query-output" class="query-result" hidden>
+      <div id="query-rows"></div>
+      <details id="query-sql-details">
+        <summary>SQL executado</summary>
+        <pre id="query-sql"></pre>
+      </details>
+    </div>
+  </dialog>
   <div id="notification" role="status" aria-atomic="true"></div>
 </body>
 </html>

@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field, StringConstraints
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 TOPIC = "catalogo.public.produtos"
-CONNECT = "http://connect:8083/connectors/produtos-destino"
+CONNECT = "http://connect:8083/connectors"
 STATIC = Path(__file__).with_name("static")
 log = logging.getLogger("uvicorn.error")
 
@@ -150,9 +150,17 @@ def require_demo_header(x_cdc_demo: Annotated[str | None, Header()] = None):
 write_guard = [Depends(require_demo_header)]
 
 
+PRODUCTS_SQL = "SELECT id, nome, estoque\nFROM public.produtos\nORDER BY id"
+
+
 @app.get("/api/produtos/{database}")
 def products(database: Literal["origem", "destino"]):
-    return query(database, "SELECT id, nome, estoque FROM public.produtos ORDER BY id")
+    return query(database, PRODUCTS_SQL)
+
+
+@app.get("/api/consulta/{database}")
+def view_database(database: Literal["origem", "destino"]):
+    return {"sql": PRODUCTS_SQL + ";", "rows": products(database)}
 
 
 @app.post("/api/produtos/origem", status_code=201, dependencies=write_guard)
@@ -193,28 +201,38 @@ def events():
         return list(feed.records)
 
 
-def connect_request(path, method="GET"):
+def connect_request(role, path, method="GET"):
+    name = f"produtos-{role}"
     try:
-        with urlopen(Request(f"{CONNECT}/{path}", method=method), timeout=3) as response:
+        with urlopen(Request(f"{CONNECT}/{name}/{path}", method=method), timeout=3) as response:
             return json.load(response) if method == "GET" else None
     except HTTPError as exc:
         if exc.code == 404:
-            raise HTTPException(503, "Registre o conector produtos-destino no Kafka Connect.") from exc
+            raise HTTPException(503, f"Registre o conector {name} no Kafka Connect.") from exc
         raise HTTPException(503, "O Kafka Connect recusou a operação. Tente novamente.") from exc
     except (URLError, TimeoutError) as exc:
         raise HTTPException(503, "Falha ao acessar o Kafka Connect.") from exc
 
 
-@app.get("/api/sink")
-def sink():
-    status = connect_request("status")
+def connector_status(role):
+    status = connect_request(role, "status")
     return {
         "connector": status["connector"]["state"],
         "tasks": [task["state"] for task in status["tasks"]],
     }
 
 
+@app.get("/api/source")
+def source():
+    return connector_status("origem")
+
+
+@app.get("/api/sink")
+def sink():
+    return connector_status("destino")
+
+
 @app.put("/api/sink/{action}", status_code=202, dependencies=write_guard)
 def set_sink(action: Literal["pause", "resume"]):
-    connect_request(action, "PUT")
+    connect_request("destino", action, "PUT")
     return {"accepted": True}

@@ -41,8 +41,8 @@ Mostre os três painéis lado a lado. Depois de cada ação, abra o JSON no pain
 | --- | --- | --- | --- |
 | 1 | Inserir Caderno, ID 101, estoque 10, pela tela. | Evento `c` para 101 e estoque 10 nos dois bancos. | [Inserção](01-insercao.png) |
 | 2 | Executar `UPDATE public.produtos SET estoque = 7 WHERE id = 101;` no `psql` da origem. | Evento `u` para 101, com `before` nulo (REPLICA IDENTITY padrão) e `after` com estoque 7. Estoque 7 nos dois bancos. | [Atualização](02-atualizacao.png) |
-| 3 | Excluir 101 pela tela. | Evento `d` seguido do tombstone com a mesma chave. As duas consultas retornam zero linhas. | [Exclusão](03-exclusao.png) |
-| 4 | Pausar o sink, aguardar **Pausado** e inserir Caneta, ID 102, estoque 10. | Origem com a linha, evento `c` para 102 e linha ausente no destino. | [Sink pausado](04-sink-pausado.png) |
+| 3 | Abrir **Consultar banco** na origem e clicar em **Excluir** na linha 101. | Evento `d` seguido do tombstone com a mesma chave. As duas consultas retornam zero linhas. | [Exclusão](03-exclusao.png) |
+| 4 | Pausar o sink, aguardar **Pausado**, inserir Caneta, ID 102, estoque 10, e abrir **Consultar banco** em cada painel. | Evento `c` para 102 e cronômetro em andamento. Uma linha na origem e zero no destino. | [Sink pausado](04-sink-pausado.png), [origem](06-consulta-origem.png) e [destino](07-consulta-destino.png) |
 | 5 | Retomar o sink e aguardar **Em execução**. | A linha 102 aparece no destino com estoque 10. | [Sink retomado](05-sink-retomado.png) |
 
 ### Consultas (nos dois terminais `psql`)
@@ -89,7 +89,7 @@ INSERT INTO public.produtos (id, nome, estoque) VALUES (102, 'Caneta', 10);
 
 ## Registro do ensaio
 
-A subida em volumes novos e o registro dos conectores levaram 31 s, com as imagens já disponíveis. A execução automatizada do roteiro técnico levou 12,5 s, incluindo interações no navegador, alteração via `psql`, consultas e capturas. As capturas foram feitas antes da inclusão do tempo de captura no painel Eventos, por isso ele não aparece nelas.
+A subida em volumes novos e o registro dos conectores levaram 30 s, com as imagens já disponíveis. A execução automatizada do roteiro técnico levou 12,6 s, incluindo interações no navegador, alteração via `psql`, consultas e sete capturas da interface atual.
 
 O [registro de verificação](verificacao.txt) contém os tempos por passo, as chaves e operações observadas no Kafka e a saída das consultas reais nos dois bancos.
 
@@ -99,6 +99,6 @@ O [registro de verificação](verificacao.txt) contém os tempos por passo, as c
 | --- | --- | --- |
 | Eixo conceitual (Lucas, slides 1–8) | 8:45 | |
 | Eixo técnico (Renato, slides 9–13) | 4:00 | |
-| Demonstração (Renato, slides 14–19) | 7:15 | |
-| Conclusão e referências (Lucas, slides 20–21) | 1:00 | |
+| Demonstração (Renato, slides 14–20) | 7:15 | |
+| Conclusão e referências (Lucas, slides 21–22) | 1:00 | |
 | **Total** | **21:00** (limite de 20–25 min) | |
