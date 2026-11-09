@@ -12,4 +12,4 @@ O painel Destino cronometra a última alteração nova a partir do commit na ori
 
 A interface identifica o conector de captura do Debezium junto aos eventos e o JDBC Sink junto ao destino. Os dois estados são consultados no Kafka Connect e podem mudar independentemente.
 
-Os painéis Origem e Destino mostram as linhas de cada banco, somente leitura e atualizadas a cada 0,3 s, para que a chegada da mudança fique visível lado a lado. As janelas Consultar banco mostram o resultado do SELECT completo. A visualização carrega ao abrir e pode ser atualizada na própria janela. Na origem, a linha oferece ações de edição de estoque e exclusão. O destino é somente leitura. O SQL executado fica em um detalhe expansível.
+Os painéis Origem e Destino mostram as linhas de cada banco, atualizadas a cada 0,3 s, para que a chegada da mudança fique visível lado a lado. Na origem, as ações por linha permitem editar o estoque no formulário ou excluir com confirmação. A tabela do destino é somente leitura.

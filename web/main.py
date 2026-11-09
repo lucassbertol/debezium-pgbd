@@ -150,17 +150,9 @@ def require_demo_header(x_cdc_demo: Annotated[str | None, Header()] = None):
 write_guard = [Depends(require_demo_header)]
 
 
-PRODUCTS_SQL = "SELECT id, nome, estoque\nFROM public.produtos\nORDER BY id"
-
-
 @app.get("/api/produtos/{database}")
 def products(database: Literal["origem", "destino"]):
-    return query(database, PRODUCTS_SQL)
-
-
-@app.get("/api/consulta/{database}")
-def view_database(database: Literal["origem", "destino"]):
-    return {"sql": PRODUCTS_SQL + ";", "rows": products(database)}
+    return query(database, "SELECT id, nome, estoque FROM public.produtos ORDER BY id")
 
 
 @app.post("/api/produtos/origem", status_code=201, dependencies=write_guard)

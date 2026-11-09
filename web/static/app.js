@@ -6,14 +6,11 @@ const idInput = byId("product-id");
 const nameInput = byId("product-name");
 const stockInput = byId("product-stock");
 const save = byId("save-product");
-const editForm = byId("query-edit-form");
-const editStock = byId("query-edit-stock");
-const editSave = byId("query-save");
+const cancelEdit = byId("cancel-edit");
 const pause = byId("pause");
 const resume = byId("resume");
-let editing = null;
-let productBusy = false;
 let sinkPending = null;
+let editingId = null;
 let notificationTimer;
 const rendered = new Map();
 
@@ -57,53 +54,66 @@ function actionResult(id, text, failed = false) {
   notificationTimer = setTimeout(() => notification.replaceChildren(), 4500);
 }
 
-function setEditing(product) {
-  editing = product?.id ?? null;
-  editForm.hidden = !product;
+function setEditing(product = null) {
+  editingId = product?.id ?? null;
+  form.reset();
+  idInput.readOnly = nameInput.readOnly = product !== null;
+  cancelEdit.hidden = product === null;
+  byId("product-form-title").textContent = product ? `Alterar estoque do produto ${product.id}` : "Novo produto";
+  save.textContent = product ? "Salvar estoque" : "Inserir produto";
   if (product) {
-    byId("query-edit-title").textContent = `Alterar estoque do produto ${product.id}`;
-    editStock.value = product.estoque;
-    editStock.focus();
+    idInput.value = product.id;
+    nameInput.value = product.nome;
+    stockInput.value = product.estoque;
+    stockInput.focus();
   }
 }
 
-async function productAction(action, onSuccess, success, feedbackId = "product-feedback") {
-  if (productBusy) return;
-  productBusy = true;
-  save.disabled = editSave.disabled = true;
-  feedback(feedbackId, "Enviando alteração…");
+async function changeProduct(path, method, data, success, after) {
+  if (save.disabled) return;
+  save.disabled = cancelEdit.disabled = true;
+  feedback("product-feedback", "Enviando alteração…");
   try {
-    await action();
-    onSuccess();
-    actionResult(feedbackId, success);
+    await api(path, method, data);
+    after();
+    actionResult("product-feedback", success);
   } catch (error) {
-    actionResult(feedbackId, error.message, true);
+    actionResult("product-feedback", error.message, true);
   } finally {
-    productBusy = false;
-    save.disabled = editSave.disabled = false;
+    save.disabled = cancelEdit.disabled = false;
   }
 }
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
   const id = idInput.valueAsNumber;
-  productAction(() => api("/produtos/origem", "POST", {
-    id, nome: nameInput.value.trim(), estoque: stockInput.valueAsNumber,
-  }), () => form.reset(), `Produto ${id} inserido na origem.`);
+  const estoque = stockInput.valueAsNumber;
+  if (editingId !== null) {
+    changeProduct(`/produtos/origem/${editingId}`, "PATCH", { estoque },
+      `Estoque do produto ${editingId} alterado para ${estoque} na origem.`, setEditing);
+  } else {
+    changeProduct("/produtos/origem", "POST", { id, nome: nameInput.value.trim(), estoque },
+      `Produto ${id} inserido na origem.`, setEditing);
+  }
+});
+
+cancelEdit.addEventListener("click", () => {
+  setEditing();
+  idInput.focus();
 });
 
 function rowButton(text, product, className, action) {
   const button = element("button", text, className);
   button.type = "button";
-  button.setAttribute("aria-label", text + " produto " + product.id);
-  button.addEventListener("click", () => { if (!productBusy) action(); });
+  button.setAttribute("aria-label", `${text} produto ${product.id}`);
+  button.addEventListener("click", () => { if (!save.disabled) action(); });
   return button;
 }
 
-function productsTable(products, writable, label) {
+function productsTable(products, label, writable = false) {
   if (!products.length) return element("p", "Nenhum produto neste banco.", "message");
   const table = element("table");
-  table.setAttribute("aria-label", label ?? (writable ? "Produtos na origem" : "Produtos no destino"));
+  table.setAttribute("aria-label", label);
   const head = table.createTHead().insertRow();
   const headings = writable ? ["ID", "Nome", "Estoque", "Ações"] : ["ID", "Nome", "Estoque"];
   for (const title of headings) {
@@ -122,9 +132,11 @@ function productsTable(products, writable, label) {
       actions.append(
         rowButton("Editar", product, "secondary", () => setEditing(product)),
         rowButton("Excluir", product, "danger", () => {
-          if (!window.confirm("Excluir o produto " + product.id + " da origem?")) return;
-          changeProductInDialog(product.id, "DELETE", undefined,
-            `Produto ${product.id} excluído da origem.`);
+          if (!window.confirm(`Excluir o produto ${product.id} da origem?`)) return;
+          changeProduct(`/produtos/origem/${product.id}`, "DELETE", undefined,
+            `Produto ${product.id} excluído da origem.`, () => {
+              if (editingId === product.id) setEditing();
+            });
         }),
       );
       row.insertCell().append(actions);
@@ -132,74 +144,6 @@ function productsTable(products, writable, label) {
   }
   return table;
 }
-
-const queryDialog = byId("database-query");
-const queryOutput = byId("query-output");
-const queryRefresh = byId("query-refresh");
-let queryBank;
-let queryRequest;
-
-for (const button of document.querySelectorAll("[data-query-bank]")) {
-  button.addEventListener("click", () => {
-    queryBank = button.dataset.queryBank;
-    setEditing(null);
-    byId("query-action-feedback").hidden = queryBank !== "origem";
-    feedback("query-action-feedback", "");
-    byId("query-title").textContent = button.getAttribute("aria-label");
-    byId("query-sql-details").open = false;
-    queryDialog.showModal();
-    loadDatabase();
-  });
-}
-
-byId("query-close").addEventListener("click", () => queryDialog.close());
-
-async function loadDatabase() {
-  const request = queryRequest = Symbol();
-  const bank = queryBank;
-  queryOutput.hidden = true;
-  queryRefresh.disabled = true;
-  feedback("query-status", "Consultando o PostgreSQL…");
-  try {
-    const result = await api(`/consulta/${bank}`);
-    if (queryRequest !== request || !queryDialog.open) return;
-    byId("query-sql").textContent = result.sql;
-    const rows = productsTable(result.rows, bank === "origem");
-    if (result.rows.length) rows.setAttribute("aria-label", `Produtos no banco de ${bank}`);
-    byId("query-rows").replaceChildren(rows);
-    const count = result.rows.length;
-    feedback("query-status", count === 1 ? "1 linha retornada." : `${count} linhas retornadas.`);
-    queryOutput.hidden = false;
-  } catch (error) {
-    if (queryRequest === request && queryDialog.open) feedback("query-status", error.message, true);
-  } finally {
-    if (queryRequest === request) queryRefresh.disabled = false;
-  }
-}
-
-queryRefresh.addEventListener("click", loadDatabase);
-
-function changeProductInDialog(id, method, data, message) {
-  productAction(() => api(`/produtos/origem/${id}`, method, data), () => {
-    if (queryDialog.open && queryBank === "origem") {
-      if (editing === id) setEditing(null);
-      loadDatabase();
-    }
-  }, message, "query-action-feedback");
-}
-
-editForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  if (editing === null) return;
-  const estoque = editStock.valueAsNumber;
-  changeProductInDialog(editing, "PATCH", { estoque },
-    `Estoque do produto ${editing} alterado para ${estoque} na origem.`);
-});
-
-byId("query-cancel-edit").addEventListener("click", () => {
-  setEditing(null);
-  queryRefresh.focus();
-});
 
 const operations = { c: "Inserção", u: "Atualização", d: "Exclusão", r: "Snapshot", tombstone: "Tombstone" };
 const elapsedSeconds = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
@@ -380,8 +324,8 @@ async function refreshSink() {
 async function refreshReplication() {
   const [events, destination] = await Promise.all([
     panel("events-data", "/eventos", eventsList),
-    panel("destino-data", "/produtos/destino", (data) => productsTable(data, false, "Produtos no destino")),
-    panel("origem-data", "/produtos/origem", (data) => productsTable(data, false, "Produtos na origem")),
+    panel("destino-data", "/produtos/destino", (data) => productsTable(data, "Produtos no destino")),
+    panel("origem-data", "/produtos/origem", (data) => productsTable(data, "Produtos na origem", true)),
   ]);
   if (events) {
     const last = events.find((event) => event.op !== "tombstone");

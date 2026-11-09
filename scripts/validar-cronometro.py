@@ -31,12 +31,6 @@ def respond(route):
         return route.fulfill(path=STATIC / "index.html")
     if path.startswith("/static/"):
         return route.fulfill(path=STATIC / path.rsplit("/", 1)[1])
-    if path.startswith("/api/consulta/"):
-        bank = path.rsplit("/", 1)[1]
-        return route.fulfill(json={
-            "sql": "SELECT id, nome, estoque FROM public.produtos ORDER BY id;",
-            "rows": catalog if bank == "origem" else destination,
-        })
     if path.startswith("/api/produtos/origem/"):
         product_id = int(path.rsplit("/", 1)[1])
         row = next(row for row in catalog if row["id"] == product_id)
@@ -48,7 +42,7 @@ def respond(route):
             return route.fulfill(status=405)
         return route.fulfill(json={"id": product_id})
     responses = {
-        "/api/produtos/origem": [],
+        "/api/produtos/origem": catalog,
         "/api/produtos/destino": destination,
         "/api/eventos": events,
         "/api/source": source_status,
@@ -65,7 +59,9 @@ with sync_playwright() as playwright:
     page.route("http://cdc.test/**", respond)
     add_event("c", int(time.time() * 1000) - 60_000)
     page.goto("http://cdc.test/")
-    expect(page.locator("main table")).to_have_count(0)
+    expect(page.get_by_role("table", name="Produtos na origem")).to_be_visible()
+    expect(page.get_by_role("button", name="Consultar banco")).to_have_count(0)
+    expect(page.locator("dialog")).to_have_count(0)
 
     status = page.locator("#replication-status")
     elapsed = page.locator("#replication-elapsed")
@@ -88,6 +84,7 @@ with sync_playwright() as playwright:
     page.wait_for_timeout(250)
     expect(elapsed).to_have_text(final_time)
     expect(page.locator("#destino-data")).to_contain_text("Caneta")
+    expect(page.locator("#destino-data").get_by_role("button")).to_have_count(0)
 
     # A contagem começa no commit (source.ts_ms): um commit de 5 s atrás já aparece com pelo menos 5 s.
     now = int(time.time() * 1000)
@@ -108,34 +105,18 @@ with sync_playwright() as playwright:
     expect(page.locator("#source-state")).to_have_text("Falha")
     expect(page.locator("#source-activity")).to_contain_text("Falha no conector de captura")
 
-    for bank, count in (("origem", "2 linhas retornadas."), ("destino", "0 linhas retornadas.")):
-        title = f"Consultar banco de {bank}"
-        button = page.get_by_role("button", name=title)
-        button.click()
-        dialog = page.get_by_role("dialog", name=title)
-        expect(dialog.locator("#query-status")).to_have_text(count)
-        dialog.get_by_text("SQL executado", exact=True).click()
-        expect(dialog.locator("#query-sql")).to_contain_text("ORDER BY id;")
-        if bank == "origem":
-            expect(dialog.get_by_role("row", name="101 Caderno 7")).to_be_visible()
-            expect(dialog.get_by_role("row", name="102 Caneta 10")).to_be_visible()
-        else:
-            destination[:] = catalog
-            dialog.get_by_role("button", name="Atualizar visualização").click()
-            expect(dialog.locator("#query-status")).to_have_text("2 linhas retornadas.")
-            expect(dialog.get_by_role("button", name="Editar produto 101")).to_have_count(0)
-            expect(dialog.get_by_role("button", name="Excluir produto 101")).to_have_count(0)
-        page.keyboard.press("Escape")
-        expect(dialog).not_to_be_visible()
-        expect(button).to_be_focused()
-
-    page.on("dialog", lambda confirmation: confirmation.accept())
-    page.get_by_role("button", name="Consultar banco de origem").click()
-    dialog = page.get_by_role("dialog", name="Consultar banco de origem")
-    dialog.get_by_role("button", name="Editar produto 101").click()
-    dialog.get_by_label("Novo estoque").fill("8")
-    dialog.get_by_role("button", name="Salvar estoque").click()
-    expect(dialog.get_by_role("row", name="101 Caderno 8")).to_be_visible()
-    dialog.get_by_role("button", name="Excluir produto 101").click()
-    expect(dialog.locator("#query-status")).to_have_text("1 linha retornada.")
-    expect(dialog.get_by_role("row", name="101 Caderno 8")).to_have_count(0)
+    origin = page.get_by_role("table", name="Produtos na origem")
+    origin.get_by_role("button", name="Editar produto 101").click()
+    expect(page.get_by_label("ID", exact=True)).to_have_value("101")
+    expect(page.get_by_label("Nome", exact=True)).to_have_value("Caderno")
+    expect(page.get_by_label("Estoque", exact=True)).to_be_focused()
+    page.get_by_label("Estoque", exact=True).fill("8")
+    page.get_by_role("button", name="Salvar estoque").click()
+    expect(origin.get_by_role("row", name="101 Caderno 8")).to_be_visible()
+    expect(page.get_by_role("button", name="Inserir produto")).to_be_visible()
+    page.once("dialog", lambda confirmation: confirmation.dismiss())
+    origin.get_by_role("button", name="Excluir produto 101").click()
+    expect(origin.get_by_role("row", name="101 Caderno 8")).to_be_visible()
+    page.once("dialog", lambda confirmation: confirmation.accept())
+    origin.get_by_role("button", name="Excluir produto 101").click()
+    expect(origin.get_by_role("row", name="101 Caderno 8")).to_have_count(0)

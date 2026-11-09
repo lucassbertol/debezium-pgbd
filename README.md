@@ -114,7 +114,7 @@ docker compose -p debezium-pgbd-demo-vazia -f compose.yaml -f compose.demo.yaml 
 
 Para parar a instância, execute `docker compose -p debezium-pgbd-demo-vazia -f compose.yaml -f compose.demo.yaml down`.
 
-1. Em **Origem**, informe ID, nome e estoque e use **Inserir produto**. As linhas de cada banco aparecem nos painéis **Origem** e **Destino**, atualizadas a cada 0,3 s. Abra **Consultar banco** para usar **Editar** ou **Excluir** na linha do produto.
+1. Em **Origem**, informe ID, nome e estoque e use **Inserir produto**. Use **Editar** ou **Excluir** na linha do produto para alterar o estoque ou remover a linha. As tabelas são atualizadas a cada 0,3 s. Para a demonstração de SQL direto, use o `psql` da origem conforme o roteiro.
 2. Em **Eventos**, confira a chave, a operação e o tempo de captura (`ts_ms − source.ts_ms`, do commit na origem ao processamento pelo Debezium) e abra **Ver JSON** para inspecionar o registro completo. O painel usa o consumidor Kafka dedicado `catalogo-interface` e mantém em memória os 40 eventos mais recentes recebidos.
 3. Em **Destino**, compare a linha com a origem. Use **Pausar sink**, espere **Pausado** e insira outro produto. Confira o evento no Kafka e a ausência da linha no destino. Use **Retomar sink** e verifique que a linha aparece. O backend consulta esse banco em transações somente leitura.
 
@@ -127,8 +127,6 @@ As duas medidas usam o relógio da máquina, compartilhado pelos contêineres e 
 
 O painel **Eventos** mostra o estado do conector de captura do Debezium, que acompanha o WAL e publica no Kafka, e identifica o último evento observado. O painel **Destino** mostra separadamente o estado do Debezium JDBC Sink, responsável por ler o tópico e aplicar as mudanças no segundo PostgreSQL.
 
-Use **Consultar banco** em **Origem** ou **Destino** para abrir o resultado do `SELECT` completo de `public.produtos` no PostgreSQL escolhido. A janela da origem permite editar e excluir produtos, e a do destino é somente leitura. Use **Atualizar visualização** para consultar novamente e **SQL executado** para inspecionar a instrução. Com o sink pausado, o produto `102` aparece na tabela da origem e só passa a aparecer no destino após a retomada.
-
 ### Regenerar as evidências e os slides
 
 Com o ambiente recém-criado pelo inicializador e Python com Playwright, `python-pptx` e Pillow (`pip install playwright python-pptx pillow` e `python -m playwright install chromium`):
@@ -138,7 +136,7 @@ python scripts/gerar-evidencias.py
 python scripts/atualizar-slides.py
 ```
 
-O primeiro script refaz os cinco passos da demonstração pela interface e pelo `psql`, grava as sete capturas em `evidencias/etapa-5` e o registro `verificacao.txt` com o tempo de cada passo, os eventos do Kafka e as consultas nos dois bancos. Se algo falhar, ele preserva o registro anterior e grava `falha-ensaio.png` e `verificacao-falha.txt`. O segundo substitui as capturas nos slides 14 a 19 do deck final. `scripts/validar-cronometro.py` testa a interface com dados simulados, sem Docker.
+O primeiro script refaz o ensaio pela interface e pelo `psql` e grava as capturas e o registro `verificacao.txt` em `evidencias/etapa-5`. Se algo falhar, ele preserva o registro anterior e grava `falha-ensaio.png` e `verificacao-falha.txt`. O segundo substitui as capturas dos seis slides de evidência (14 a 19) e aplica a mesma escala a todas. `scripts/validar-cronometro.py` testa a interface com dados simulados, sem Docker.
 
 Para usar o ambiente normal, execute `docker compose up -d --build --wait` e registre os conectores com os comandos das seções anteriores. A [interface do ambiente normal](http://127.0.0.1:8000/) reutiliza seus volumes.
 
@@ -188,7 +186,8 @@ Antes da apresentação, subir o ambiente com o inicializador, verificar os dois
 | --- | --- | --- | --- |
 | 1. Inserção | Cadastrar o produto `101` com estoque `10`. | `op=c`, com a chave `101`. | O produto aparece com estoque `10`. |
 | 2. Atualização | Executar `UPDATE public.produtos SET estoque = 7 WHERE id = 101;` no `psql` da origem. | `op=u`, com o novo estoque. | O mesmo produto aparece com estoque `7`. |
-| 3. Exclusão | Abrir **Consultar banco** na origem e excluir o produto `101`. | `op=d`, com a chave `101`. | A consulta pelo `id` retorna zero linhas. |
+| 2b. Edição pela tela | Clicar em **Editar** na linha `101` da tabela Origem, definir o estoque como `8` e salvar. | `op=u`, com o novo estoque. | O mesmo produto aparece com estoque `8`. |
+| 3. Exclusão | Clicar em **Excluir** na linha `101` da tabela Origem e confirmar. | `op=d`, com a chave `101`. | A consulta pelo `id` retorna zero linhas. |
 | 4. Sincronização assíncrona | Pausar somente o sink, confirmar a pausa e cadastrar o produto `102`. | `op=c` aparece no tópico com o sink pausado. | O produto está na origem e ainda não aparece no destino. Depois de retomar o sink, ele aparece. |
 
 Os resultados da tabela são os critérios de sucesso da demonstração. Durante o ensaio, registrar capturas que mostrem o SQL executado, os eventos e as consultas no destino. Para o teste de pausa, guardar uma captura antes da retomada e outra depois.
@@ -204,7 +203,7 @@ A avaliação divide o trabalho em **fundamentação teórica (50%)** e **demons
 | --- | --- | --- | --- |
 | Conceitual (slides 1–8) | Lucas | 8:45 | Problema, conceitos, WAL, alternativas (triggers, polling, replicação nativa), vantagens, limitações e garantias. |
 | Técnico (slides 9–13) | Renato | 4:00 | Estudo de caso, diagrama do fluxo, tópico como log, quatro pré-requisitos da origem e configuração do sink. |
-| Demonstração (slides 14–20) | Renato | 7:15 | Primeiro as capturas da interface e das consultas, depois a execução ao vivo e a verificação nos dois bancos. |
+| Demonstração (slides 14–20) | Renato | 7:15 | Primeiro as capturas da interface, depois a execução ao vivo e a verificação nos dois bancos. |
 | Conclusão e referências (slides 21–22) | Lucas | 1:00 | Por que usamos Debezium e quando uma cópia nativa é suficiente. |
 
 Cada integrante apresenta pelo menos um eixo completo. Para a entrega, o grupo deve:

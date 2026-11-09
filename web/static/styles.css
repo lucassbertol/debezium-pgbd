@@ -39,7 +39,6 @@ button { padding: 6px 12px; cursor: pointer; border: 1px solid var(--accent); ba
 button.secondary { background: white; color: var(--accent); }
 button.danger { background: white; color: #992d32; border-color: #c9a4a6; }
 button:disabled { opacity: .56; cursor: default; }
-.database-button { margin-top: 8px; }
 :focus-visible { outline: 3px solid #915b13; outline-offset: 2px; }
 .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .connector-label { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; justify-content: space-between; }
@@ -70,8 +69,8 @@ th, td { padding: 8px; text-align: left; vertical-align: top; overflow-wrap: any
 th:first-child, td:first-child { padding-left: 14px; }
 th { color: var(--muted); font-size: .8rem; }
 tbody tr { border-top: 1px solid var(--rule); }
-td button { font-size: .78rem; min-height: 34px; padding: 3px 6px; }
 .row-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.row-actions button { font-size: .78rem; min-height: 34px; padding: 3px 6px; }
 details { padding: 10px 16px; border-bottom: 1px solid var(--rule); }
 details:last-child { border-bottom: 0; }
 summary { cursor: pointer; }
@@ -81,22 +80,6 @@ summary .badge { margin: 0 5px; }
 .panel-table .message { padding: 4px 18px 10px; }
 .latency { margin-right: 8px; color: var(--muted); font-family: ui-monospace, monospace; font-size: .78rem; }
 pre { margin-bottom: 0; padding: 10px; max-height: 260px; overflow: auto; border: 1px solid var(--rule); background: var(--paper); font-size: .78rem; }
-#database-query {
-  width: min(740px, calc(100% - 32px));
-  max-height: calc(100% - 32px);
-  padding: 0;
-  color: var(--ink);
-  background: var(--surface);
-  border: 1px solid var(--rule);
-  border-radius: 10px;
-}
-#database-query::backdrop { background: #172a3873; }
-.query-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 14px 18px; background: #e6f0ef; }
-.query-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 14px 18px; border-bottom: 1px solid var(--rule); }
-.query-toolbar p { margin: 0; }
-#query-action-feedback:empty { display: none; }
-.query-result { padding: 0 18px 18px; }
-.query-result details { padding: 10px 0 0; }
 @media (max-width: 960px) {
   .flow { grid-template-columns: 1fr; }
   .panel-head { min-height: auto; }

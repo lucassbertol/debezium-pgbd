@@ -7,6 +7,7 @@ Uso, na raiz do projeto, depois de scripts/gerar-evidencias.py:
 Requer python-pptx e Pillow (pip install python-pptx pillow). Altera o deck final no lugar.
 """
 import sys
+from io import BytesIO
 from pathlib import Path
 
 from PIL import Image
@@ -16,17 +17,16 @@ from pptx.oxml.ns import qn
 ROOT = Path(__file__).resolve().parent.parent
 DECK = ROOT / "apresentacao" / "CDC-com-Debezium-e-PostgreSQL-final.pptx"
 SHOTS = ROOT / "evidencias" / "etapa-5"
-GAP = 80_000  # espaço entre a imagem e a legenda, em EMU
-FOOTER = 6_300_000  # topo da linha do rodapé, em EMU
+CANVAS = (2000, 770)
 
-# Título do slide -> capturas, da esquerda para a direita.
+# Título do slide -> captura.
 SLIDES = {
-    "Inserção do produto 101": ["01-insercao.png"],
-    "Atualização do estoque": ["02-atualizacao.png"],
-    "Exclusão do produto 101": ["03-exclusao.png"],
-    "Inserção com o sink pausado": ["04-sink-pausado.png"],
-    "Consulta dos bancos com o sink pausado": ["06-consulta-origem.png", "07-consulta-destino.png"],
-    "Retomada do sink": ["05-sink-retomado.png"],
+    "Inserção do produto 101": "01-insercao.png",
+    "Atualização do estoque": "02-atualizacao.png",
+    "Editar e excluir na origem": "06-acoes-origem.png",
+    "Exclusão do produto 101": "03-exclusao.png",
+    "Inserção com o sink pausado": "04-sink-pausado.png",
+    "Retomada do sink": "05-sink-retomado.png",
 }
 
 
@@ -35,42 +35,39 @@ def slide_title(slide):
     return next((t for t in texts if t in SLIDES), None)
 
 
-def replace(slide, picture, path, box):
-    left, top, width, height = box
-    _, rid = slide.part.get_or_add_image_part(str(path))
+def replace(slide, picture, path, scale):
+    with Image.open(path) as raw:
+        image = raw.convert("RGB").resize(
+            (round(raw.width * scale), round(raw.height * scale)), Image.Resampling.LANCZOS
+        )
+    frame = Image.new("RGB", CANVAS, "white")
+    frame.paste(image, ((frame.width - image.width) // 2, 0))
+    data = BytesIO()
+    frame.save(data, format="PNG")
+    _, rid = slide.part.get_or_add_image_part(data)
     picture._element.find(".//" + qn("a:blip")).set(qn("r:embed"), rid)
-    w, h = Image.open(path).size
-    scale = min(width / w, height / h)
-    picture.width, picture.height = int(w * scale), int(h * scale)
-    picture.left = left + (width - picture.width) // 2
-    picture.top = top
 
 
 def main():
+    sizes = []
+    for name in SLIDES.values():
+        path = SHOTS / name
+        if not path.is_file():
+            sys.exit(f"Captura ausente: {name}")
+        with Image.open(path) as image:
+            sizes.append(image.size)
+    scale = min(CANVAS[0] / max(w for w, _ in sizes), CANVAS[1] / max(h for _, h in sizes))
     prs = Presentation(DECK)
     done = set()
     for slide in prs.slides:
         title = slide_title(slide)
         if title is None:
             continue
-        files = [SHOTS / name for name in SLIDES[title]]
-        missing = [f.name for f in files if not f.exists()]
-        if missing:
-            sys.exit(f"Capturas ausentes: {', '.join(missing)}")
         logo_limit = 3_000_000  # o logotipo da UFSM é a imagem pequena do cabeçalho
-        pictures = sorted((sh for sh in slide.shapes if sh.shape_type == 13 and sh.width > logo_limit),
-                          key=lambda sh: sh.left)
-        if len(pictures) != len(files):
-            sys.exit(f"O slide '{title}' tem {len(pictures)} capturas, esperado {len(files)}.")
-        # Legenda: o texto logo abaixo da captura, acima da linha do rodapé.
-        caption = max((sh for sh in slide.shapes if sh.has_text_frame and sh.text_frame.text
-                       and pictures[0].top < sh.top < FOOTER), key=lambda sh: sh.top)
-        for picture, path in zip(pictures, files):
-            if len(files) == 1:
-                box = (571_680, picture.top, 11_048_760, caption.top - GAP - picture.top)
-            else:
-                box = (picture.left, picture.top, picture.width, caption.top - GAP - picture.top)
-            replace(slide, picture, path, box)
+        pictures = [sh for sh in slide.shapes if sh.shape_type == 13 and sh.width > logo_limit]
+        if len(pictures) != 1:
+            sys.exit(f"O slide '{title}' tem {len(pictures)} capturas, esperada uma.")
+        replace(slide, pictures[0], SHOTS / SLIDES[title], scale)
         done.add(title)
     if done != set(SLIDES):
         sys.exit(f"Slides não encontrados: {', '.join(sorted(set(SLIDES) - done))}")

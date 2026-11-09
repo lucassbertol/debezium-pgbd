@@ -62,10 +62,10 @@ class Rehearsal:
         status = self.page.locator("#replication-status").inner_text()
         self.log(f"Interface: {status}")
 
-    def shot(self, name, locator=None):
+    def shot(self, name):
         # A notificação flutuante cobriria parte dos painéis na captura.
         self.page.evaluate("document.getElementById('notification').replaceChildren()")
-        (locator or self.page.locator(".flow")).screenshot(path=OUT / name)
+        self.page.locator(".flow").screenshot(path=OUT / name)
         self.log(f"Captura: {name}")
 
     def insert(self, product_id, name, stock):
@@ -78,13 +78,6 @@ class Rehearsal:
 
     def confirmed(self, text):
         expect(self.page.locator("#replication-status")).to_contain_text(text, timeout=TIMEOUT)
-
-    def open_query(self, bank, rows):
-        page = self.page
-        page.get_by_role("button", name=f"Consultar banco de {bank}").click()
-        dialog = page.get_by_role("dialog", name=f"Consultar banco de {bank}")
-        expect(dialog.locator("#query-status")).to_have_text(rows)
-        return dialog
 
     def run(self):
         page = self.page
@@ -111,12 +104,21 @@ class Rehearsal:
         self.compare(101)
         self.shot("02-atualizacao.png")
 
-        self.mark("Passo 3: exclusão de 101 pela janela Consultar banco")
-        dialog = self.open_query("origem", "1 linha retornada.")
+        self.mark("Ações da origem: editar o estoque de 101 pela interface")
+        origin = page.locator("#origem-data")
+        origin.get_by_role("button", name="Editar produto 101").click()
+        expect(page.locator("#product-form-title")).to_have_text("Alterar estoque do produto 101")
+        page.fill("#product-stock", "8")
+        self.shot("06-acoes-origem.png")
+        page.get_by_role("button", name="Salvar estoque").click()
+        expect(page.locator("#product-feedback")).to_have_text("Estoque do produto 101 alterado para 8 na origem.")
+        expect(page.locator("#destino-data").get_by_role("row", name="101 Caderno 8")).to_be_visible(timeout=TIMEOUT)
+        self.compare(101)
+
+        self.mark("Passo 3: exclusão de 101 pelo botão Excluir na origem")
         page.once("dialog", lambda confirmation: confirmation.accept())
-        dialog.get_by_role("button", name="Excluir produto 101").click()
-        expect(dialog.locator("#query-status")).to_have_text("0 linhas retornadas.")
-        dialog.locator("#query-close").click()
+        origin.get_by_role("button", name="Excluir produto 101").click()
+        expect(page.locator("#product-feedback")).to_have_text("Produto 101 excluído da origem.")
         self.confirmed("Exclusão do produto 101 confirmada no destino")
         expect(page.locator("#events-data")).to_contain_text("Tombstone")
         self.kafka(101, {"d", "tombstone"})
@@ -135,12 +137,6 @@ class Rehearsal:
         self.timer()
         self.compare(102)
         self.shot("04-sink-pausado.png")
-        dialog = self.open_query("origem", "1 linha retornada.")
-        self.shot("06-consulta-origem.png", dialog)
-        dialog.locator("#query-close").click()
-        dialog = self.open_query("destino", "0 linhas retornadas.")
-        self.shot("07-consulta-destino.png", dialog)
-        dialog.locator("#query-close").click()
 
         self.mark("Passo 5: retomada do sink")
         page.click("#resume")
