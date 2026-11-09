@@ -114,15 +114,31 @@ docker compose -p debezium-pgbd-demo-vazia -f compose.yaml -f compose.demo.yaml 
 
 Para parar a instância, execute `docker compose -p debezium-pgbd-demo-vazia -f compose.yaml -f compose.demo.yaml down`.
 
-1. Em **Origem**, informe ID, nome e estoque e use **Inserir produto**. Abra **Consultar banco** para usar **Editar** ou **Excluir** na linha do produto.
+1. Em **Origem**, informe ID, nome e estoque e use **Inserir produto**. As linhas de cada banco aparecem nos painéis **Origem** e **Destino**, atualizadas a cada 0,3 s. Abra **Consultar banco** para usar **Editar** ou **Excluir** na linha do produto.
 2. Em **Eventos**, confira a chave, a operação e o tempo de captura (`ts_ms − source.ts_ms`, do commit na origem ao processamento pelo Debezium) e abra **Ver JSON** para inspecionar o registro completo. O painel usa o consumidor Kafka dedicado `catalogo-interface` e mantém em memória os 40 eventos mais recentes recebidos.
 3. Em **Destino**, compare a linha com a origem. Use **Pausar sink**, espere **Pausado** e insira outro produto. Confira o evento no Kafka e a ausência da linha no destino. Use **Retomar sink** e verifique que a linha aparece. O backend consulta esse banco em transações somente leitura.
 
-O cronômetro **Tempo até o destino** acompanha a última inserção, atualização ou exclusão nova. A contagem começa quando o navegador observa o evento no Kafka e termina quando uma consulta ao PostgreSQL de destino confirma o estado esperado. O valor inclui a espera pela próxima consulta automática e é separado do tempo de captura mostrado no painel Eventos. Alterações feitas pelo `psql` também entram nessa medição.
+A interface mostra duas medidas de tempo para cada mudança:
+
+- **Captura** (painel Eventos): `ts_ms − source.ts_ms`, do commit na origem até o processamento pelo Debezium.
+- **Tempo até o destino** (painel Destino): do commit na origem (`source.ts_ms`) até uma consulta ao PostgreSQL de destino confirmar o estado esperado. A interface consulta o destino a cada 0,3 s, então o valor é um limite superior com essa resolução. Ele é sempre maior que o tempo de captura e, com o sink pausado, inclui o tempo de pausa.
+
+As duas medidas usam o relógio da máquina, compartilhado pelos contêineres e pelo navegador. Se os valores parecerem estranhos no Windows (por exemplo, depois de o computador hibernar), reinicie o Docker Desktop para ressincronizar o relógio da máquina virtual. Alterações feitas pelo `psql` também entram nas medições.
 
 O painel **Eventos** mostra o estado do conector de captura do Debezium, que acompanha o WAL e publica no Kafka, e identifica o último evento observado. O painel **Destino** mostra separadamente o estado do Debezium JDBC Sink, responsável por ler o tópico e aplicar as mudanças no segundo PostgreSQL.
 
-Use **Consultar banco** em **Origem** ou **Destino** para abrir todas as linhas e colunas de `public.produtos` no PostgreSQL escolhido. A janela da origem permite editar e excluir produtos, e a do destino é somente leitura. Use **Atualizar visualização** para consultar novamente e **SQL executado** para inspecionar a instrução. Com o sink pausado, o produto `102` aparece na tabela da origem e só passa a aparecer no destino após a retomada.
+Use **Consultar banco** em **Origem** ou **Destino** para abrir o resultado do `SELECT` completo de `public.produtos` no PostgreSQL escolhido. A janela da origem permite editar e excluir produtos, e a do destino é somente leitura. Use **Atualizar visualização** para consultar novamente e **SQL executado** para inspecionar a instrução. Com o sink pausado, o produto `102` aparece na tabela da origem e só passa a aparecer no destino após a retomada.
+
+### Regenerar as evidências e os slides
+
+Com o ambiente recém-criado pelo inicializador e Python com Playwright, `python-pptx` e Pillow (`pip install playwright python-pptx pillow` e `python -m playwright install chromium`):
+
+```bash
+python scripts/gerar-evidencias.py
+python scripts/atualizar-slides.py
+```
+
+O primeiro script refaz os cinco passos da demonstração pela interface e pelo `psql`, grava as sete capturas em `evidencias/etapa-5` e o registro `verificacao.txt` com o tempo de cada passo, os eventos do Kafka e as consultas nos dois bancos. Se algo falhar, ele preserva o registro anterior e grava `falha-ensaio.png` e `verificacao-falha.txt`. O segundo substitui as capturas nos slides 14 a 19 do deck final. `scripts/validar-cronometro.py` testa a interface com dados simulados, sem Docker.
 
 Para usar o ambiente normal, execute `docker compose up -d --build --wait` e registre os conectores com os comandos das seções anteriores. A [interface do ambiente normal](http://127.0.0.1:8000/) reutiliza seus volumes.
 
@@ -194,7 +210,7 @@ A avaliação divide o trabalho em **fundamentação teórica (50%)** e **demons
 Cada integrante apresenta pelo menos um eixo completo. Para a entrega, o grupo deve:
 
 - A dupla respeita o limite de três integrantes. O grupo confirmou a exclusividade do Tema 10 na turma e o envio da composição e do tema ao professor (`mergen@inf.ufsm.br`).
-- Cronometrar o ensaio completo com a fala de Lucas e Renato e as transições para a demonstração (tabela no final do [roteiro](evidencias/etapa-5/roteiro.md)). No ensaio automatizado, a sequência técnica levou 12,6 segundos, incluindo interações, comandos SQL e capturas.
+- Cronometrar o ensaio completo com a fala de Lucas e Renato e as transições para a demonstração (tabela no final do [roteiro](evidencias/etapa-5/roteiro.md)). O tempo da sequência técnica automatizada fica registrado em `evidencias/etapa-5/verificacao.txt`.
 - Incluir nos slides as capturas da solução funcionando, pois a avaliação considera o que foi realizado até a data de entrega.
 - Entregar pelo Moodle os mesmos slides que serão apresentados. Basta um envio por grupo, na data comum a confirmar. A data da apresentação de cada grupo será divulgada com antecedência.
 

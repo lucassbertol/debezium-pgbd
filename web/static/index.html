@@ -10,7 +10,7 @@
 <body>
   <main>
     <header class="masthead">
-      <h1>Demonstração CDC em um Banco de dados</h1>
+      <h1>Demonstração de CDC com Debezium</h1>
     </header>
 
     <div class="flow">
@@ -33,6 +33,10 @@
           </div>
           <p id="product-feedback" class="feedback"></p>
         </form>
+        <div class="panel-table">
+          <h3>Linhas em <code>public.produtos</code></h3>
+          <div id="origem-data" class="data"><p class="message">Consultando a origem…</p></div>
+        </div>
       </section>
 
       <section aria-labelledby="event-title">
@@ -75,7 +79,11 @@
           <h3>Tempo até o destino</h3>
           <p id="replication-status" role="status">Aguardando uma nova alteração no Kafka.</p>
           <p id="replication-elapsed" class="number" aria-hidden="true" hidden></p>
-          <p class="timer-description">Do evento observado no Kafka à confirmação por consulta ao destino.</p>
+          <p class="timer-description">Do commit na origem à confirmação por consulta ao destino. A interface consulta o destino a cada 0,3 s.</p>
+        </div>
+        <div class="panel-table">
+          <h3>Linhas em <code>public.produtos</code></h3>
+          <div id="destino-data" class="data"><p class="message">Consultando o destino…</p></div>
         </div>
       </section>
     </div>

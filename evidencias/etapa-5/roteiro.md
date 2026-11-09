@@ -42,7 +42,7 @@ Mostre os três painéis lado a lado. Depois de cada ação, abra o JSON no pain
 | 1 | Inserir Caderno, ID 101, estoque 10, pela tela. | Evento `c` para 101 e estoque 10 nos dois bancos. | [Inserção](01-insercao.png) |
 | 2 | Executar `UPDATE public.produtos SET estoque = 7 WHERE id = 101;` no `psql` da origem. | Evento `u` para 101, com `before` nulo (REPLICA IDENTITY padrão) e `after` com estoque 7. Estoque 7 nos dois bancos. | [Atualização](02-atualizacao.png) |
 | 3 | Abrir **Consultar banco** na origem e clicar em **Excluir** na linha 101. | Evento `d` seguido do tombstone com a mesma chave. As duas consultas retornam zero linhas. | [Exclusão](03-exclusao.png) |
-| 4 | Pausar o sink, aguardar **Pausado**, inserir Caneta, ID 102, estoque 10, e abrir **Consultar banco** em cada painel. | Evento `c` para 102 e cronômetro em andamento. Uma linha na origem e zero no destino. | [Sink pausado](04-sink-pausado.png), [origem](06-consulta-origem.png) e [destino](07-consulta-destino.png) |
+| 4 | Pausar o sink, aguardar **Pausado**, inserir Caneta, ID 102, estoque 10, e abrir **Consultar banco** em cada painel. | Evento `c` para 102, linha só na tabela da origem e cronômetro contando desde o commit. A janela da origem retorna uma linha e a do destino, zero. | [Sink pausado](04-sink-pausado.png), [origem](06-consulta-origem.png) e [destino](07-consulta-destino.png) |
 | 5 | Retomar o sink e aguardar **Em execução**. | A linha 102 aparece no destino com estoque 10. | [Sink retomado](05-sink-retomado.png) |
 
 ### Consultas (nos dois terminais `psql`)
@@ -89,7 +89,7 @@ INSERT INTO public.produtos (id, nome, estoque) VALUES (102, 'Caneta', 10);
 
 ## Registro do ensaio
 
-A subida em volumes novos e o registro dos conectores levaram 30 s, com as imagens já disponíveis. A execução automatizada do roteiro técnico levou 12,6 s, incluindo interações no navegador, alteração via `psql`, consultas e sete capturas da interface atual.
+A subida em volumes novos e o registro dos conectores levaram 30 s, com as imagens já disponíveis. As capturas e o registro de verificação são gerados por `scripts/gerar-evidencias.py`, que refaz os cinco passos e anota o tempo de cada um. Depois de regenerá-los, rode `scripts/atualizar-slides.py` para levar as capturas novas ao deck final.
 
 O [registro de verificação](verificacao.txt) contém os tempos por passo, as chaves e operações observadas no Kafka e a saída das consultas reais nos dois bancos.
 

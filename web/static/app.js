@@ -100,10 +100,10 @@ function rowButton(text, product, className, action) {
   return button;
 }
 
-function productsTable(products, writable) {
+function productsTable(products, writable, label) {
   if (!products.length) return element("p", "Nenhum produto neste banco.", "message");
   const table = element("table");
-  table.setAttribute("aria-label", writable ? "Produtos na origem" : "Produtos no destino");
+  table.setAttribute("aria-label", label ?? (writable ? "Produtos na origem" : "Produtos no destino"));
   const head = table.createTHead().insertRow();
   const headings = writable ? ["ID", "Nome", "Estoque", "Ações"] : ["ID", "Nome", "Estoque"];
   for (const title of headings) {
@@ -206,8 +206,14 @@ const elapsedSeconds = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 3
 let latestChange = null;
 let measurement = null;
 
-function formatElapsed(started) {
-  return elapsedSeconds.format((performance.now() - started) / 1000) + " s";
+// Tempo desde o commit na origem (source.ts_ms). Os contêineres e o navegador usam o relógio da mesma máquina.
+function formatElapsed(commitMs) {
+  return elapsedSeconds.format(Math.max(0, Date.now() - commitMs) / 1000) + " s";
+}
+
+function commitTime(event) {
+  const payload = event.value.payload;
+  return Number.isFinite(payload.source?.ts_ms) ? payload.source.ts_ms : payload.ts_ms;
 }
 
 function observeChange(events) {
@@ -220,7 +226,7 @@ function observeChange(events) {
   if (!event || previous === identity) return;
 
   clearInterval(measurement?.ticker);
-  const started = performance.now();
+  const started = commitTime(event);
   const elapsed = byId("replication-elapsed");
   elapsed.hidden = false;
   const tick = () => { elapsed.textContent = formatElapsed(started); };
@@ -244,7 +250,7 @@ function confirmDestination(products) {
   const elapsed = formatElapsed(started);
   byId("replication-elapsed").textContent = elapsed;
   byId("replication-status").textContent =
-    `${operations[event.op]} do produto ${event.id} observada no destino após ${elapsed}.`;
+    `${operations[event.op]} do produto ${event.id} confirmada no destino ${elapsed} após o commit na origem.`;
 }
 
 function eventsList(events) {
@@ -372,7 +378,11 @@ async function refreshSink() {
 }
 
 async function refreshReplication() {
-  const events = await panel("events-data", "/eventos", eventsList);
+  const [events, destination] = await Promise.all([
+    panel("events-data", "/eventos", eventsList),
+    panel("destino-data", "/produtos/destino", (data) => productsTable(data, false, "Produtos no destino")),
+    panel("origem-data", "/produtos/origem", (data) => productsTable(data, false, "Produtos na origem")),
+  ]);
   if (events) {
     const last = events.find((event) => event.op !== "tombstone");
     feedback("source-last-event", last
@@ -380,16 +390,20 @@ async function refreshReplication() {
       : "Nenhum evento observado.");
   }
   observeChange(events);
-  if (measurement) confirmDestination(await api("/produtos/destino").catch(() => undefined));
+  confirmDestination(destination);
 }
 
-async function refresh() {
-  await Promise.all([
-    refreshReplication(),
-    refreshSource(),
-    refreshSink(),
-  ]);
-  setTimeout(refresh, 1000);
+// Eventos e bancos a cada 0,3 s, para que o cronômetro tenha boa resolução.
+async function replicationLoop() {
+  await refreshReplication();
+  setTimeout(replicationLoop, 300);
 }
 
-refresh();
+// Estado dos conectores no Kafka Connect a cada 1 s.
+async function connectorLoop() {
+  await Promise.all([refreshSource(), refreshSink()]);
+  setTimeout(connectorLoop, 1000);
+}
+
+replicationLoop();
+connectorLoop();

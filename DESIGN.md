@@ -8,8 +8,8 @@ A tela usa controles nativos, foco visível, tabelas semânticas e detalhes expa
 
 O resultado de cada operação aparece por alguns segundos em uma notificação no canto inferior direito e fica registrado no painel correspondente. As consultas automáticas mantêm seu feedback no próprio painel.
 
-O painel Destino cronometra a última alteração nova observada no Kafka. A contagem para quando a consulta ao destino encontra os valores do evento ou confirma a ausência da linha excluída.
+O painel Destino cronometra a última alteração nova a partir do commit na origem (source.ts_ms). A contagem para quando a consulta ao destino encontra os valores do evento ou confirma a ausência da linha excluída, e por isso é sempre maior que o tempo de captura mostrado no painel Eventos.
 
 A interface identifica o conector de captura do Debezium junto aos eventos e o JDBC Sink junto ao destino. Os dois estados são consultados no Kafka Connect e podem mudar independentemente.
 
-As tabelas de produtos aparecem nas janelas Consultar banco. A visualização carrega ao abrir e pode ser atualizada na própria janela. Na origem, a linha oferece ações de edição de estoque e exclusão. O destino é somente leitura. O SQL executado fica em um detalhe expansível.
+Os painéis Origem e Destino mostram as linhas de cada banco, somente leitura e atualizadas a cada 0,3 s, para que a chegada da mudança fique visível lado a lado. As janelas Consultar banco mostram o resultado do SELECT completo. A visualização carrega ao abrir e pode ser atualizada na própria janela. Na origem, a linha oferece ações de edição de estoque e exclusão. O destino é somente leitura. O SQL executado fica em um detalhe expansível.

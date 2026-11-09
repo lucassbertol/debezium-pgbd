@@ -14,10 +14,14 @@ destination = []
 source_status = {"connector": "RUNNING", "tasks": ["RUNNING"]}
 
 
-def add_event(operation, timestamp):
+def add_event(operation, timestamp, commit=None):
+    """commit simula source.ts_ms; sem ele, o cronômetro usa ts_ms."""
+    payload = {"ts_ms": timestamp, "after": product if operation != "d" else None}
+    if commit is not None:
+        payload["source"] = {"ts_ms": commit}
     events.insert(0, {
         "partition": 0, "offset": len(events), "id": product["id"], "op": operation,
-        "value": {"payload": {"ts_ms": timestamp, "after": product if operation != "d" else None}},
+        "value": {"payload": payload},
     })
 
 
@@ -79,15 +83,26 @@ with sync_playwright() as playwright:
     expect(status).to_have_text("Aguardando no destino: atualização do produto 102.")
 
     destination[:] = [product]
-    expect(status).to_contain_text("Atualização do produto 102 observada no destino")
+    expect(status).to_contain_text("Atualização do produto 102 confirmada no destino")
     final_time = elapsed.inner_text()
     page.wait_for_timeout(250)
     expect(elapsed).to_have_text(final_time)
+    expect(page.locator("#destino-data")).to_contain_text("Caneta")
+
+    # A contagem começa no commit (source.ts_ms): um commit de 5 s atrás já aparece com pelo menos 5 s.
+    now = int(time.time() * 1000)
+    add_event("u", now, commit=now - 5000)
+    destination[:] = [dict(product, estoque=3)]
+    expect(status).to_have_text("Aguardando no destino: atualização do produto 102.")
+    seconds = float(elapsed.inner_text().removesuffix(" s").replace(",", "."))
+    assert seconds >= 5, seconds
+    destination[:] = [product]
+    expect(status).to_contain_text("confirmada no destino")
 
     add_event("d", int(time.time() * 1000))
     expect(status).to_have_text("Aguardando no destino: exclusão do produto 102.")
     destination.clear()
-    expect(status).to_contain_text("Exclusão do produto 102 observada no destino")
+    expect(status).to_contain_text("Exclusão do produto 102 confirmada no destino")
 
     source_status["tasks"] = ["FAILED"]
     expect(page.locator("#source-state")).to_have_text("Falha")
